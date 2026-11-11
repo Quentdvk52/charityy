@@ -1,0 +1,74 @@
+{
+  "common": {
+    "appName": "Charityy",
+    "tagline": "Social video network for solidarity and verified fundraisers",
+    "donate": "Donate",
+    "support": "Support",
+    "sign": "Sign to support",
+    "certified": "Charityy Certified",
+    "verified": "Identity verified",
+    "urgency": "Urgent",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "close": "Close",
+    "disclaimerSignatures": "Signatures attest to community mobilization and do not replace legal or financial verification.",
+    "disclaimerCertification": "Certification attests to documentary verification and consistency, not to the ultimate use of funds."
+  },
+  "feed": {
+    "tabForYou": "For You",
+    "tabFollowing": "Following",
+    "tabLocal": "Near Me",
+    "tabUrgencies": "Urgencies",
+    "tabLives": "Lives",
+    "noVideos": "No videos available in this section yet."
+  },
+  "campaign": {
+    "goal": "Goal",
+    "collected": "Raised",
+    "signaturesCount": "{count} signatures out of 100 required",
+    "status": {
+      "draft": "Draft",
+      "awaitingSignatures": "Awaiting signatures",
+      "communityValidated": "Community Validated",
+      "certified": "Certified",
+      "active": "Active",
+      "ended": "Ended",
+      "suspended": "Suspended"
+    },
+    "updates": "Updates",
+    "expenses": "Expense history",
+    "proofs": "Reviewed documents"
+  },
+  "donation": {
+    "title": "Support this cause",
+    "amountLabel": "Donation amount",
+    "customAmount": "Other amount",
+    "breakdownTitle": "Financial transparency",
+    "breakdownGross": "Your donation",
+    "breakdownProcessor": "Payment processing fee",
+    "breakdownPlatform": "Operating fee (3% net)",
+    "breakdownNet": "Net amount paid to beneficiary",
+    "paymentMethod": "Payment method",
+    "mobileMoney": "Mobile Money (Wave, Orange, MTN, Moov)",
+    "card": "Credit/Debit Card (Visa, Mastercard)",
+    "proceed": "Proceed to secure payment"
+  },
+  "wallet": {
+    "title": "My Solidarity Wallet",
+    "balance": "Available balance",
+    "topup": "Top up balance",
+    "withdraw": "Request withdrawal",
+    "history": "Transaction ledger",
+    "empty": "No transactions yet"
+  },
+  "admin": {
+    "title": "Administration & Moderation Console",
+    "dashboard": "Dashboard",
+    "kycQueue": "Identity verification queue",
+    "campaignQueue": "Certification queue",
+    "payoutQueue": "Payout approvals",
+    "moderationQueue": "Reports & Moderation",
+    "auditLogs": "Audit Log"
+  }
+}

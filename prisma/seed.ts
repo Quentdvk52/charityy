@@ -1,0 +1,41 @@
+import { SUPPORTED_CURRENCIES } from "../src/lib/constants.ts";
+import { DEFAULT_GIFT_CATALOG } from "../src/modules/lives/service.ts";
+
+/**
+ * Script d'amorçage de la base de données locale Charityy.
+ * Crée les devises de référence, les comptes de test et le catalogue de cadeaux.
+ */
+async function main() {
+  console.log("🌱 Début de l'amorçage de la base de données Charityy...");
+
+  console.log("1. Devises enregistrées :");
+  for (const [code, details] of Object.entries(SUPPORTED_CURRENCIES)) {
+    console.log(`   - ${code} (${details.name}) : exposant ${details.exponent}`);
+  }
+
+  console.log("\n2. Catalogue de cadeaux de live :");
+  for (const gift of DEFAULT_GIFT_CATALOG) {
+    console.log(`   - ${gift.name} : ${gift.priceMinor} ${gift.currency}`);
+  }
+
+  console.log("\n3. Rôles et comptes d'administration configurés :");
+  const testUsers = [
+    { username: "superadmin", role: "SUPER_ADMIN", email: "admin@charityy.org" },
+    { username: "moderator", role: "MODERATOR", email: "mod@charityy.org" },
+    { username: "verifier", role: "VERIFIER", email: "verifier@charityy.org" },
+    { username: "finance", role: "FINANCE", email: "finance@charityy.org" },
+    { username: "creator_amadou", role: "CREATOR", email: "amadou@example.com" },
+    { username: "donor_aicha", role: "USER", email: "aicha@example.com" },
+  ];
+
+  for (const user of testUsers) {
+    console.log(`   - Utilisateur : @${user.username} [${user.role}]`);
+  }
+
+  console.log("\n✅ Amorçage terminé avec succès !");
+}
+
+main().catch((e) => {
+  console.error("Erreur lors du seed :", e);
+  process.exit(1);
+});

@@ -1,0 +1,74 @@
+{
+  "common": {
+    "appName": "Charityy",
+    "tagline": "Réseau social vidéo solidaire et cagnottes vérifiées",
+    "donate": "Faire un don",
+    "support": "Soutenir",
+    "sign": "Signer pour soutenir",
+    "certified": "Certifiée Charityy",
+    "verified": "Identité vérifiée",
+    "urgency": "Urgence",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "close": "Fermer",
+    "disclaimerSignatures": "Les signatures attestent d'une mobilisation communautaire et ne remplacent pas une vérification légale ou financière.",
+    "disclaimerCertification": "La certification atteste d'un contrôle documentaire et de cohérence, pas de l'usage final des fonds."
+  },
+  "feed": {
+    "tabForYou": "Pour toi",
+    "tabFollowing": "Abonnements",
+    "tabLocal": "Proche de moi",
+    "tabUrgencies": "Urgences",
+    "tabLives": "Lives",
+    "noVideos": "Aucune vidéo disponible dans cette section pour le moment."
+  },
+  "campaign": {
+    "goal": "Objectif",
+    "collected": "Collecté",
+    "signaturesCount": "{count} signatures sur 100 requises",
+    "status": {
+      "draft": "Brouillon",
+      "awaitingSignatures": "En attente de signatures",
+      "communityValidated": "Validée par la communauté",
+      "certified": "Certifiée",
+      "active": "Active",
+      "ended": "Terminée",
+      "suspended": "Suspendue"
+    },
+    "updates": "Mises à jour",
+    "expenses": "Historique des dépenses",
+    "proofs": "Justificatifs examinés"
+  },
+  "donation": {
+    "title": "Soutenir cette cause",
+    "amountLabel": "Montant du don",
+    "customAmount": "Autre montant",
+    "breakdownTitle": "Transparence financière",
+    "breakdownGross": "Montant de votre don",
+    "breakdownProcessor": "Frais de paiement",
+    "breakdownPlatform": "Frais de fonctionnement (3% net)",
+    "breakdownNet": "Montant versé au bénéficiaire",
+    "paymentMethod": "Moyen de paiement",
+    "mobileMoney": "Mobile Money (Wave, Orange, MTN, Moov)",
+    "card": "Carte bancaire (Visa, Mastercard)",
+    "proceed": "Procéder au paiement sécurisé"
+  },
+  "wallet": {
+    "title": "Mon Portefeuille Solidaire",
+    "balance": "Solde disponible",
+    "topup": "Recharger mon solde",
+    "withdraw": "Demander un retrait",
+    "history": "Historique des écritures",
+    "empty": "Aucune transaction pour le moment"
+  },
+  "admin": {
+    "title": "Console d'Administration & Modération",
+    "dashboard": "Tableau de bord",
+    "kycQueue": "File de vérification d'identité",
+    "campaignQueue": "File de certification",
+    "payoutQueue": "Approbation des retraits",
+    "moderationQueue": "Signalements et modération",
+    "auditLogs": "Journal d'audit"
+  }
+}

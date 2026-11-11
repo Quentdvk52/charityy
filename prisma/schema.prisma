@@ -1,0 +1,441 @@
+// Charityy - schéma de référence. L'agent peut l'étendre, jamais affaiblir les contraintes.
+// Montants : entiers en unités mineures (BigInt). Devise ISO 4217 avec exposant stocké dans la table Currency.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  CREATOR
+  ORG_OWNER
+  MODERATOR
+  VERIFIER
+  FINANCE
+  SUPPORT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum KycStatus { NONE PENDING NEEDS_INFO APPROVED REJECTED EXPIRED }
+enum VideoStatus { UPLOADING PROCESSING READY BLOCKED REMOVED }
+enum Visibility { PUBLIC FOLLOWERS PRIVATE }
+enum CampaignStatus { DRAFT AWAITING_SIGNATURES IN_REVIEW COMMUNITY_VALIDATED CERTIFIED ACTIVE ENDED SUSPENDED FROZEN CLOSED }
+enum SignerKind { RELATIVE RESOURCE_PERSON COMMUNITY }
+enum PaymentStatus { PENDING SUCCESS FAILED CANCELLED REFUNDED }
+enum PaymentPurpose { DONATION WALLET_TOPUP CERTIFICATION BOOST GIFT PRODUCT }
+enum PayoutStatus { REQUESTED UNDER_REVIEW APPROVED PROCESSING PAID FAILED REJECTED }
+enum LedgerAccountType { USER_WALLET CAMPAIGN_FUNDS CREATOR_EARNINGS PLATFORM_REVENUE PAYMENT_FEES PROCESSOR_CLEARING RESERVE }
+enum CertificationStatus { SUBMITTED IN_REVIEW NEEDS_INFO APPROVED REJECTED }
+enum ReportStatus { OPEN TRIAGED ACTIONED DISMISSED }
+
+model User {
+  id              String   @id @default(cuid())
+  phone           String?  @unique
+  phoneVerifiedAt DateTime?
+  email           String?  @unique
+  emailVerifiedAt DateTime?
+  passwordHash    String?
+  username        String   @unique
+  displayName     String
+  bio             String?
+  avatarKey       String?
+  countryCode     String?  @db.Char(2)
+  city            String?
+  locale          String   @default("fr")
+  profileType     String   @default("PERSONAL")
+  roles           Role[]   @default([USER])
+  kycStatus       KycStatus @default(NONE)
+  trustScore      Int      @default(0)
+  suspendedAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  videos          Video[]
+  campaigns       Campaign[]
+  signatures      Signature[]
+  kyc             KycSubmission[]
+  sessions        Session[]
+  @@index([countryCode, city])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  userAgent  String?
+  ipHash     String?
+  deviceId   String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model KycSubmission {
+  id             String    @id @default(cuid())
+  userId         String
+  status         KycStatus @default(PENDING)
+  legalName      String
+  birthDate      DateTime?
+  idDocType      String
+  idDocNumberEnc String    // chiffré applicativement (AES-256-GCM), jamais en clair
+  idFrontKey     String    // clé R2 privée
+  idBackKey      String?
+  selfieKey      String?
+  expiresOn      DateTime?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  rejectionNote  String?
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id])
+  @@index([userId, status])
+}
+
+model Video {
+  id           String      @id @default(cuid())
+  authorId     String
+  streamUid    String?     @unique
+  caption      String?
+  hashtags     String[]
+  category     String?
+  countryCode  String?     @db.Char(2)
+  city         String?
+  lat          Float?
+  lng          Float?
+  durationSec  Int?
+  status       VideoStatus @default(UPLOADING)
+  visibility   Visibility  @default(PUBLIC)
+  campaignId   String?
+  urgent       Boolean     @default(false)
+  likeCount    Int         @default(0)
+  commentCount Int         @default(0)
+  shareCount   Int         @default(0)
+  viewCount    BigInt      @default(0)
+  createdAt    DateTime    @default(now())
+  author       User        @relation(fields: [authorId], references: [id])
+  campaign     Campaign?   @relation(fields: [campaignId], references: [id])
+  @@index([countryCode, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  videoId   String
+  authorId  String
+  parentId  String?
+  body      String
+  hiddenAt  DateTime?
+  createdAt DateTime @default(now())
+  @@index([videoId, createdAt])
+}
+
+model Like {
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+  @@id([userId, videoId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  @@id([followerId, followingId])
+}
+
+model Campaign {
+  id               String         @id @default(cuid())
+  ownerId          String
+  beneficiaryName  String
+  title            String
+  story            String
+  category         String
+  currency         String         @db.Char(3)
+  goalMinor        BigInt
+  collectedMinor   BigInt         @default(0)
+  donorCount       Int            @default(0)
+  signatureCount   Int            @default(0)
+  status           CampaignStatus @default(DRAFT)
+  deadline         DateTime?
+  countryCode      String?        @db.Char(2)
+  city             String?
+  certified        Boolean        @default(false)
+  frozenReason     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  owner            User           @relation(fields: [ownerId], references: [id])
+  videos           Video[]
+  signatures       Signature[]
+  documents        CampaignDocument[]
+  updates          CampaignUpdate[]
+  expenses         CampaignExpense[]
+  @@index([status, countryCode])
+}
+
+model CampaignDocument {
+  id         String   @id @default(cuid())
+  campaignId String
+  kind       String   // MEDICAL, QUOTE, INVOICE, SCHOOL, ADMIN, OTHER
+  storageKey String   // R2 privé
+  sha256     String
+  visibleToPublic Boolean @default(false)
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model CampaignUpdate {
+  id         String   @id @default(cuid())
+  campaignId String
+  body       String
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model CampaignExpense {
+  id          String   @id @default(cuid())
+  campaignId  String
+  amountMinor BigInt
+  label       String
+  proofKey    String?
+  createdAt   DateTime @default(now())
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Signature {
+  id           String     @id @default(cuid())
+  campaignId   String
+  signerId     String
+  kind         SignerKind
+  relation     String?    // lien déclaré (parent, enseignant, chef de quartier...)
+  comment      String?
+  deviceHash   String?
+  ipHash       String?
+  verifiedAt   DateTime?
+  invalidatedAt DateTime?
+  createdAt    DateTime   @default(now())
+  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  signer       User       @relation(fields: [signerId], references: [id])
+  @@unique([campaignId, signerId])
+  @@index([campaignId, kind])
+}
+
+model ResourcePersonProof {
+  id         String   @id @default(cuid())
+  userId     String
+  role       String   // chef de quartier, médecin, enseignant, autorité...
+  method     String   // DOCUMENT, CALL, INSTITUTIONAL_EMAIL, OTHER
+  evidenceKey String?
+  verifiedById String?
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+}
+
+model Certification {
+  id            String              @id @default(cuid())
+  campaignId    String              @unique
+  status        CertificationStatus @default(SUBMITTED)
+  feeMinor      BigInt
+  feeCurrency   String              @db.Char(3)
+  reviewerId    String?
+  checklist     Json?
+  decisionNote  String?
+  decidedAt     DateTime?
+  createdAt     DateTime            @default(now())
+}
+
+// ---------- Argent : ledger en partie double ----------
+
+model Currency {
+  code     String @id @db.Char(3)
+  exponent Int
+  name     String
+}
+
+model FxRate {
+  base      String   @db.Char(3)
+  quote     String   @db.Char(3)
+  rate      Decimal  @db.Decimal(24, 12)
+  fetchedAt DateTime
+  @@id([base, quote, fetchedAt])
+}
+
+model LedgerAccount {
+  id        String            @id @default(cuid())
+  type      LedgerAccountType
+  ownerId   String?           // userId ou campaignId selon le type
+  currency  String            @db.Char(3)
+  createdAt DateTime          @default(now())
+  entries   LedgerEntry[]
+  @@unique([type, ownerId, currency])
+}
+
+model LedgerTransaction {
+  id             String        @id @default(cuid())
+  idempotencyKey String        @unique
+  kind           String        // DONATION, TOPUP, GIFT, FEE, PAYOUT, REFUND, ADJUSTMENT
+  paymentId      String?
+  payoutId       String?
+  description    String?
+  createdAt      DateTime      @default(now())
+  entries        LedgerEntry[]
+}
+
+// Règle : pour chaque LedgerTransaction, somme des débits = somme des crédits (vérifiée en transaction et par job quotidien).
+// Les lignes sont immuables : aucune mise à jour ni suppression. Correction = écriture inverse.
+model LedgerEntry {
+  id            String            @id @default(cuid())
+  transactionId String
+  accountId     String
+  direction     String            // DEBIT | CREDIT
+  amountMinor   BigInt
+  currency      String            @db.Char(3)
+  createdAt     DateTime          @default(now())
+  transaction   LedgerTransaction @relation(fields: [transactionId], references: [id])
+  account       LedgerAccount     @relation(fields: [accountId], references: [id])
+  @@index([accountId, createdAt])
+}
+
+model Payment {
+  id               String         @id @default(cuid())
+  userId           String?
+  purpose          PaymentPurpose
+  campaignId       String?
+  amountMinor      BigInt
+  currency         String         @db.Char(3)
+  status           PaymentStatus  @default(PENDING)
+  monerooId        String?        @unique
+  idempotencyKey   String         @unique
+  anonymous        Boolean        @default(false)
+  referrerCreatorId String?       // créateur à l'origine du don (2%)
+  metadata         Json?
+  createdAt        DateTime       @default(now())
+  completedAt      DateTime?
+  @@index([campaignId, status])
+}
+
+model Payout {
+  id             String       @id @default(cuid())
+  userId         String
+  campaignId     String?
+  amountMinor    BigInt
+  currency       String       @db.Char(3)
+  method         String
+  destinationEnc String       // numéro mobile money / compte, chiffré
+  status         PayoutStatus @default(REQUESTED)
+  monerooId      String?      @unique
+  idempotencyKey String       @unique
+  reviewedById   String?
+  secondReviewerId String?
+  createdAt      DateTime     @default(now())
+  paidAt         DateTime?
+  @@index([status])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  externalId  String
+  payloadHash String
+  processedAt DateTime?
+  error       String?
+  receivedAt  DateTime @default(now())
+  @@unique([provider, externalId])
+}
+
+model GiftCatalog {
+  id         String @id @default(cuid())
+  name       String
+  priceMinor BigInt
+  currency   String @db.Char(3)
+  assetKey   String
+  active     Boolean @default(true)
+}
+
+model GiftTransaction {
+  id         String   @id @default(cuid())
+  giftId     String
+  senderId   String
+  receiverId String
+  liveId     String?
+  videoId    String?
+  quantity   Int      @default(1)
+  ledgerTxId String   @unique
+  createdAt  DateTime @default(now())
+}
+
+model LiveSession {
+  id          String   @id @default(cuid())
+  hostId      String
+  campaignId  String?
+  channelName String   @unique
+  status      String   @default("SCHEDULED")
+  recordingRef String?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model Boost {
+  id         String   @id @default(cuid())
+  ownerId    String
+  videoId    String
+  scope      String   // LOCAL, NATIONAL, INTEREST, FEATURED
+  budgetMinor BigInt
+  currency   String   @db.Char(3)
+  paymentId  String?  @unique
+  startsAt   DateTime
+  endsAt     DateTime
+  status     String   @default("PENDING")
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  reporterId String?
+  targetType String       // VIDEO, CAMPAIGN, USER, COMMENT, LIVE
+  targetId   String
+  reason     String
+  details    String?
+  status     ReportStatus @default(OPEN)
+  handledById String?
+  createdAt  DateTime     @default(now())
+  @@index([status, targetType])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  ipHash     String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, readAt])
+}
