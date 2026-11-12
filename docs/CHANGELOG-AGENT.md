@@ -30,3 +30,25 @@
 ### 3. Dette Connue & Prochaines Actions
 - Validation formelle par les conseils juridiques du schéma de flux Moneroo pour le statut de non-détention de fonds.
 - Branchement des clés de production réelles dès que les comptes marchands Moneroo et Cloudflare sont validés.
+
+## Version 1.1.0 — 12 Novembre 2026 (Étape 1 : Comptes, Auth & KYC)
+
+### 1. Authentification & Sessions Sécurisées
+- **Hachage PBKDF2 avec sel** (`src/server/auth/session.ts`) : 600 000 itérations SHA-512, vérification en temps constant contre les attaques temporelles.
+- **Gestion des sessions** : Cookies `HttpOnly`, `Secure`, `SameSite=Lax` avec hash SHA-256 stocké côté serveur.
+- **Service OTP anti-bruteforce** : Codes à 6 chiffres, expiration à 5 minutes, blocage strict après 5 échecs.
+- **Routes API d'authentification** : Inscription (`/api/auth/register`), Connexion (`/api/auth/login`), Déconnexion (`/api/auth/logout`), Profil actif (`/api/auth/me`), et validation OTP (`/api/auth/otp`).
+
+### 2. Parcours KYC & Protection des Pièces Justificatives
+- **Chiffrement symétrique au repos** : Numéro de pièce d'identité chiffré en AES-256-GCM (`encryptSensitive`) dès la soumission (`/api/kyc/submit`).
+- **Visionneuse sécurisée éphémère** (`/api/kyc/document-url`) : URLs signées R2 d'une durée stricte de 60 secondes, réservées aux rôles avec permission `kyc:view_sensitive` (VERIFIER, ADMIN, SUPER_ADMIN), interdites au support, avec journalisation d'audit systématique.
+- **Revue documentaire** : Approbation ou rejet motivé avec traçabilité de l'agent vérificateur.
+
+### 3. Middleware & Géolocalisation
+- **`src/middleware.ts`** : Détection automatique du pays (`x-vercel-ip-country`), de la ville, de la langue et mapping de la devise locale (XOF, XAF, EUR, USD, etc.).
+- **Protection des accès admin** : Redirection automatique si tentative d'accès sans session active.
+
+### 4. Tests Unitaires Validés
+- `tests/unit/auth.test.ts` (PBKDF2, sessions, OTP et limites de tentatives).
+- `tests/unit/kyc.test.ts` (Chiffrement AES-256-GCM, contrôle d'accès vertical/horizontal, URLs signées 60s).
+
