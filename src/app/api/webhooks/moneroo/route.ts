@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const moneroo = new MonerooClient();
 
     // 1. Vérification cryptographique HMAC-SHA256 en temps constant
-    const isValidSignature = moneroo.verifyWebhookSignature(rawBody, signature);
+    const isValidSignature = moneroo.verifyWebhook(rawBody, signature);
     if (!isValidSignature) {
       logAudit({
         action: "security:moneroo_webhook_invalid_signature",
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     if (eventType === "payment.success" && paymentId) {
       // 3. Re-vérification obligatoire auprès de l'API Moneroo côté serveur
       const verification = await moneroo.verifyPayment(paymentId);
-      if (!verification.success || verification.status !== "success") {
+      if (!verification || verification.status !== "success") {
         return NextResponse.json(
           { error: "Vérification auprès de Moneroo non confirmée" },
           { status: 400 }

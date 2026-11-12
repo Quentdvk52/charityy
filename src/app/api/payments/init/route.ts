@@ -72,9 +72,9 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!result.success || !result.checkout_url) {
+    if (!result || !result.checkout_url) {
       return NextResponse.json(
-        { error: result.error || "Échec de l'initialisation Moneroo." },
+        { error: "Échec de l'initialisation Moneroo." },
         { status: 502 }
       );
     }
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       checkoutUrl: result.checkout_url,
-      paymentId: result.payment_id,
+      paymentId: result.id,
       split: {
         gross: formatCurrency(split.grossAmountMinor, currency),
         processorFee: formatCurrency(split.processorFeeMinor, currency),

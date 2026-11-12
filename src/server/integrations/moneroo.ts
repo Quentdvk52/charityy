@@ -105,6 +105,10 @@ export class MonerooClient {
     return verifyHmacSignature(rawBody, signatureHeader, env.MONEROO_WEBHOOK_SECRET);
   }
 
+  verifyWebhookSignature(rawBody: string | Buffer, signatureHeader: string): boolean {
+    return this.verifyWebhook(rawBody, signatureHeader);
+  }
+
   /**
    * Mock pour le développement local et les tests automatisés sans accès internet.
    */
