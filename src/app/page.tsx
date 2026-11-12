@@ -483,7 +483,7 @@ export default function HomePage() {
               </div>
 
               <div className="border border-surface-border rounded p-3 space-y-2">
-                <div className="font-medium">File d'approbation des retraits (> 1 000 000 FCFA) :</div>
+                <div className="font-medium">File d'approbation des retraits (&gt; 1 000 000 FCFA) :</div>
                 <div className="bg-surface-subtle p-2 rounded flex justify-between items-center text-[11px]">
                   <div>
                     <span className="font-semibold">Dr. Mamadou Diallo</span>
