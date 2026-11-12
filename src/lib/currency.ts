@@ -1,4 +1,4 @@
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from "./constants.ts";
+import { SUPPORTED_CURRENCIES, type CurrencyCode } from "./constants";
 
 /**
  * Formate un montant en unités mineures (BigInt) en chaîne monétaire lisible selon la locale et la devise.

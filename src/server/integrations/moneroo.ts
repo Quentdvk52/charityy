@@ -1,5 +1,5 @@
-import { env } from "../../lib/env.ts";
-import { verifyHmacSignature } from "../../lib/crypto.ts";
+import { env } from "../../lib/env";
+import { verifyHmacSignature } from "../../lib/crypto";
 
 export interface MonerooCustomer {
   email?: string;

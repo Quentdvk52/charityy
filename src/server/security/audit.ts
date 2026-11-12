@@ -1,4 +1,4 @@
-import { hashWithPepper } from "../../lib/crypto.ts";
+import { hashWithPepper } from "../../lib/crypto";
 
 export interface LogAuditParams {
   actorId?: string | null;

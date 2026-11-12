@@ -1,4 +1,4 @@
-import { PLATFORM_DEFAULTS } from "../../lib/constants.ts";
+import { PLATFORM_DEFAULTS } from "../../lib/constants";
 
 export interface SplitInput {
   grossAmountMinor: bigint;

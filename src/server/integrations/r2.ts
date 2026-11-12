@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { PLATFORM_DEFAULTS } from "../../lib/constants.ts";
+import { PLATFORM_DEFAULTS } from "../../lib/constants";
 
 export interface PresignedUrlResult {
   url: string;

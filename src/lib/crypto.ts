@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { env } from "./env.ts";
+import { env } from "./env";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12; // 96-bit IV recommended for GCM

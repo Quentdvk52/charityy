@@ -1,5 +1,5 @@
-import { SUPPORTED_CURRENCIES } from "../src/lib/constants.ts";
-import { DEFAULT_GIFT_CATALOG } from "../src/modules/lives/service.ts";
+import { SUPPORTED_CURRENCIES } from "../src/lib/constants";
+import { DEFAULT_GIFT_CATALOG } from "../src/modules/lives/service";
 
 /**
  * Script d'amorçage de la base de données locale Charityy.

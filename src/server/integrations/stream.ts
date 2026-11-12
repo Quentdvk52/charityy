@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { verifyHmacSignature } from "../../lib/crypto.ts";
+import { verifyHmacSignature } from "../../lib/crypto";
 
 export interface StreamUploadResponse {
   uploadURL: string;

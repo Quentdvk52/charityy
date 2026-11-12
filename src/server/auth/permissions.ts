@@ -1,4 +1,4 @@
-import type { UserRole } from "../../lib/constants.ts";
+import type { UserRole } from "../../lib/constants";
 
 export type Permission =
   // Campagnes & Vidéos
