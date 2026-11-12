@@ -52,3 +52,33 @@
 - `tests/unit/auth.test.ts` (PBKDF2, sessions, OTP et limites de tentatives).
 - `tests/unit/kyc.test.ts` (Chiffrement AES-256-GCM, contrôle d'accès vertical/horizontal, URLs signées 60s).
 
+## Version 2.0.0 — 12 Novembre 2026 (Livraison Intégrale des Étapes 2 à 10)
+
+### 1. Vidéo & Fil d'Actualité (Étape 2)
+- **Moteur de recommandation** (`src/modules/videos/service.ts`) : Algorithme multi-critères combinant fraîcheur temporelle, proximité géographique, certification et urgence vitale, avec règle anti-monopole (max 2 vidéos consécutives par auteur).
+- **API du fil vidéo** (`/api/feed`) : 4 flux spécialisés (`for_you`, `local`, `urgencies`, `lives`).
+- **Upload Stream** (`/api/videos/upload-url`) : Direct creator upload Cloudflare Stream avec plafonnement à 180s.
+- **Interactions sociales** (`/api/videos/[id]/interaction`) : Gestion des likes, des commentaires et signalements pour modération.
+
+### 2. Cagnottes, Signatures Citoyennes & Confiance (Étape 3)
+- **Gestion des cagnottes** (`/api/campaigns`) : Création guidée avec contrôle KYC préalable, gestion des objectifs et des devises.
+- **Signatures citoyennes anti-sybil** (`/api/campaigns/[id]/signatures`) : Quotas cibles (40 proches, 30 personnes ressources, 30 communauté), unicité de vote par compte, hachage d'appareil/IP avec poivre pour contrer les fermes de faux comptes.
+- **Validation communautaire automatique** : Transition automatique `AWAITING_SIGNATURES -> COMMUNITY_VALIDATED -> ACTIVE` dès le franchissement des 100 signatures valides.
+
+### 3. Paiements Moneroo, Ledger en Partie Double, Wallet & Retraits (Étape 4)
+- **Tunnel de don Moneroo** (`/api/payments/init`) : Calcul transparent du split financier avant paiement.
+- **Webhook Moneroo sécurisé** (`/api/webhooks/moneroo`) : Vérification cryptographique HMAC-SHA256 en temps constant, protection anti-rejeu par registre d'idempotence, re-vérification du statut de la transaction auprès de l'API Moneroo et écriture canonique dans le ledger (Débit = Crédit).
+- **Gestion des retraits et double approbation** (`/api/payouts/request` et `/api/payouts/approve`) : Règle stricte imposant 2 signataires distincts (FINANCE puis ADMIN) pour tout versement supérieur ou égal à 1 000 000 FCFA avec interdiction d'approuver son propre retrait.
+
+### 4. Directs Solidaires Agora RTC & Cadeaux Virtuels (Étape 6)
+- **Génération de jetons Agora RTC** (`/api/live/agora-token`) : Jetons serveur éphémères (1 heure), obligation de KYC approuvé pour démarrer un live de collecte.
+- **Cadeaux virtuels** (`/api/live/gifts/send`) : Débit direct du wallet avec écriture ledger en temps réel.
+
+### 5. Géolocalisation, Devises, PWA & Conformité Légale (Étapes 7, 8, 9, 10)
+- **API de conversion de devises** (`/api/currency/rates`) : Taux de référence XOF vers XAF, EUR, USD, GNF, CDF, CAD, GBP.
+- **Carte des urgences avec floutage GPS** (`/api/urgencies/map`) : Décalage aléatoire pour préserver l'intimité des bénéficiaires.
+- **PWA complète** : Manifeste (`public/manifest.json`) et Service Worker (`public/sw.js`) pour fonctionnement hors-ligne partiel.
+- **Pages légales & Transparence** : CGU (`/cgu`), Politique de confidentialité (`/confidentialite`), et `/.well-known/security.txt`.
+- **Rapport d'audit de sécurité** : Fiche complète consignée dans `docs/audits/audit-securite-final.md`.
+
+

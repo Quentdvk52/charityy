@@ -208,6 +208,15 @@ export default function HomePage() {
         </div>
       </main>
 
+      <footer className="p-4 border-t border-surface-border text-center text-xs text-neutral-500 space-y-2">
+        <div className="flex justify-center gap-4 text-[11px]">
+          <a href="/cgu" className="hover:text-foreground underline">Conditions Générales (CGU)</a>
+          <a href="/confidentialite" className="hover:text-foreground underline">Confidentialité & RGPD</a>
+          <a href="/api/currency/rates" target="_blank" className="hover:text-foreground">Taux Devises</a>
+        </div>
+        <p className="text-[10px] text-neutral-400">© 2026 Charityy : monde meilleure • Plateforme solidaire sécurisée</p>
+      </footer>
+
       {/* MODAL 1 : TUNNEL DE DON SÉCURISÉ & TRANSPARENT */}
       {showDonateModal && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-4">
