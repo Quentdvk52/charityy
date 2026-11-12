@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE_NAME } from "@/server/auth/session";
+import { SESSION_COOKIE_NAME } from "@/lib/constants";
 
 // Devises par défaut selon le code pays ISO (2 lettres)
 const COUNTRY_CURRENCY_MAP: Record<string, string> = {

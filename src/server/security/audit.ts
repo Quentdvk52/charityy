@@ -22,7 +22,7 @@ const memoryAuditLogs: AuditRecord[] = [];
  * Enregistre un événement dans le journal d'audit append-only de la plateforme.
  * Les adresses IP sont systématiquement hachées avec le poivre secret.
  */
-export async function recordAuditLog(params: LogAuditParams): Promise<AuditRecord> {
+export function logAudit(params: LogAuditParams): AuditRecord {
   const ipHash = params.clientIp ? hashWithPepper(params.clientIp) : null;
 
   const record: AuditRecord = {
@@ -39,6 +39,8 @@ export async function recordAuditLog(params: LogAuditParams): Promise<AuditRecor
   memoryAuditLogs.push(record);
   return record;
 }
+
+export const recordAuditLog = logAudit;
 
 /**
  * Récupère les entrées du journal d'audit pour la consultation dans le back-office.

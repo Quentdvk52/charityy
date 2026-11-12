@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { hashWithPepper } from "@/lib/crypto";
+import { SESSION_COOKIE_NAME } from "@/lib/constants";
 
-export interface SessionData {
+export { SESSION_COOKIE_NAME };
   userId: string;
   tokenHash: string;
   userAgent?: string;

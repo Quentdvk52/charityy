@@ -16,6 +16,8 @@ export const PLATFORM_DEFAULTS = {
   PRIVATE_URL_EXPIRATION_SEC: 60,
 } as const;
 
+export const SESSION_COOKIE_NAME = "charityy_session";
+
 export const SUPPORTED_CURRENCIES = {
   XOF: { code: "XOF", exponent: 0, name: "Franc CFA UEMOA", symbol: "FCFA" },
   XAF: { code: "XAF", exponent: 0, name: "Franc CFA CEMAC", symbol: "FCFA" },

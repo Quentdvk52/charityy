@@ -40,3 +40,34 @@ export function generateAgoraRtcToken(params: AgoraTokenParams): string {
     })
   ).toString("base64");
 }
+
+export class AgoraRtcClient {
+  private appId: string;
+
+  constructor() {
+    this.appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || "mock_agora_app_id";
+  }
+
+  async generateRtcToken(params: {
+    channelName: string;
+    userId: string | number;
+    role: AgoraRole;
+    expireSeconds?: number;
+  }): Promise<{ token: string; appId: string; channelName: string; expiresAt: number }> {
+    const expireSeconds = params.expireSeconds || 3600;
+    const token = generateAgoraRtcToken({
+      channelName: params.channelName,
+      uid: params.userId,
+      role: params.role,
+      expireTimeInSeconds: expireSeconds,
+    });
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+
+    return {
+      token,
+      appId: this.appId,
+      channelName: params.channelName,
+      expiresAt: currentTimestamp + expireSeconds,
+    };
+  }
+}

@@ -4,24 +4,11 @@ import { z } from "zod";
 import { SESSION_COOKIE_NAME, hashSessionToken } from "@/server/auth/session";
 import { findSession, findUserById } from "@/server/auth/store";
 import { logAudit } from "@/server/security/audit";
-
-export interface PayoutRequestItem {
-  id: string;
-  userId: string;
-  beneficiaryName: string;
-  amountMinor: bigint;
-  currency: string;
-  phoneOrAccount: string;
-  method: "MOBILE_MONEY" | "BANK_TRANSFER";
-  status: "REQUESTED" | "UNDER_REVIEW" | "APPROVED" | "PAID" | "REJECTED";
-  firstApproverId?: string | null;
-  firstApprovedAt?: Date | null;
-  secondApproverId?: string | null;
-  secondApprovedAt?: Date | null;
-  createdAt: Date;
-}
-
-export const memoryPayouts: PayoutRequestItem[] = [];
+import {
+  PayoutRequestItem,
+  memoryPayouts,
+  DOUBLE_APPROVAL_THRESHOLD_XOF,
+} from "@/modules/payouts/service";
 
 const payoutSchema = z.object({
   amount: z.number().int().positive("Montant de retrait invalide"),
@@ -29,9 +16,6 @@ const payoutSchema = z.object({
   phoneOrAccount: z.string().min(8, "Coordonnées de versement obligatoires"),
   method: z.enum(["MOBILE_MONEY", "BANK_TRANSFER"]).default("MOBILE_MONEY"),
 });
-
-// Seuil de double approbation obligatoire (1 000 000 FCFA)
-export const DOUBLE_APPROVAL_THRESHOLD_XOF = 1_000_000n;
 
 export async function POST(request: Request) {
   try {

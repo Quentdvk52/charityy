@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { SESSION_COOKIE_NAME, hashSessionToken } from "@/server/auth/session";
 import { findSession, findUserById } from "@/server/auth/store";
-import { memoryPayouts, DOUBLE_APPROVAL_THRESHOLD_XOF } from "../request/route";
+import { memoryPayouts, DOUBLE_APPROVAL_THRESHOLD_XOF } from "@/modules/payouts/service";
 import { hasPermission } from "@/server/auth/permissions";
 import { logAudit } from "@/server/security/audit";
 
