@@ -3,6 +3,8 @@ import { hashWithPepper } from "@/lib/crypto";
 import { SESSION_COOKIE_NAME } from "@/lib/constants";
 
 export { SESSION_COOKIE_NAME };
+
+export interface SessionData {
   userId: string;
   tokenHash: string;
   userAgent?: string;
@@ -25,7 +27,6 @@ export interface AuthUser {
 }
 
 // Configuration des sessions
-export const SESSION_COOKIE_NAME = "charityy_session";
 export const SESSION_DURATION_DAYS = 30;
 export const OTP_EXPIRATION_MINUTES = 5;
 export const MAX_OTP_ATTEMPTS = 5;
