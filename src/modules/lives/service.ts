@@ -8,32 +8,53 @@ export interface GiftItem {
 
 export const DEFAULT_GIFT_CATALOG: GiftItem[] = [
   {
-    id: "gift_heart",
-    name: "Cœur Solidaire",
-    priceMinor: 100n, // 100 FCFA
-    currency: "XOF",
-    assetKey: "lottie/heart.json",
-  },
-  {
     id: "gift_rose",
-    name: "Rose d'Espoir",
-    priceMinor: 500n, // 500 FCFA
+    name: "🌹 Rose Solidaire",
+    priceMinor: 100n, // 100 FCFA
     currency: "XOF",
     assetKey: "lottie/rose.json",
   },
   {
+    id: "gift_heart",
+    name: "💖 Cœur d'Espoir",
+    priceMinor: 500n, // 500 FCFA
+    currency: "XOF",
+    assetKey: "lottie/heart.json",
+  },
+  {
+    id: "gift_coffee",
+    name: "☕ Café des Bénévoles",
+    priceMinor: 1000n, // 1 000 FCFA
+    currency: "XOF",
+    assetKey: "lottie/coffee.json",
+  },
+  {
     id: "gift_tree",
-    name: "Arbre de Vie",
+    name: "🌳 Arbre de Vie",
     priceMinor: 2000n, // 2 000 FCFA
     currency: "XOF",
     assetKey: "lottie/tree.json",
   },
   {
+    id: "gift_water",
+    name: "💧 Puits d'Eau Potable",
+    priceMinor: 5000n, // 5 000 FCFA
+    currency: "XOF",
+    assetKey: "lottie/water.json",
+  },
+  {
     id: "gift_crown",
-    name: "Couronne d'Or",
+    name: "👑 Couronne d'Impact",
     priceMinor: 10000n, // 10 000 FCFA
     currency: "XOF",
     assetKey: "three/crown.glb",
+  },
+  {
+    id: "gift_lion",
+    name: "🦁 Lion de la Solidarité",
+    priceMinor: 25000n, // 25 000 FCFA
+    currency: "XOF",
+    assetKey: "three/lion.glb",
   },
 ];
 

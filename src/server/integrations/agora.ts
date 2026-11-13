@@ -16,7 +16,7 @@ export interface AgoraTokenParams {
 export function generateAgoraRtcToken(params: AgoraTokenParams): string {
   const { channelName, uid, role, expireTimeInSeconds = 3600 } = params;
 
-  const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || "mock_agora_app_id";
+  const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || process.env.AGORA_APP_ID || "mock_agora_app_id";
   const appCertificate = process.env.AGORA_APP_CERTIFICATE || "mock_agora_cert";
 
   const currentTimestamp = Math.floor(Date.now() / 1000);
@@ -45,7 +45,7 @@ export class AgoraRtcClient {
   private appId: string;
 
   constructor() {
-    this.appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || "mock_agora_app_id";
+    this.appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || process.env.AGORA_APP_ID || "mock_agora_app_id";
   }
 
   async generateRtcToken(params: {

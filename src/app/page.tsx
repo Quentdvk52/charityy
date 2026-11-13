@@ -512,7 +512,40 @@ export default function HomePage() {
   const [selectedMethod, setSelectedMethod] = useState<"mobile_money" | "card">("mobile_money");
   const [donationSuccess, setDonationSuccess] = useState(false);
 
-  // Live & Cadeaux Agora
+  // Live & Cadeaux Agora (TikTok Live Experience)
+  const [showStartLiveModal, setShowStartLiveModal] = useState(false);
+  const [isLiveBroadcaster, setIsLiveBroadcaster] = useState(false);
+  const [liveTitleInput, setLiveTitleInput] = useState("");
+  const [liveCampaignSelection, setLiveCampaignSelection] = useState<string>("free");
+  const [liveDurationSeconds, setLiveDurationSeconds] = useState(0);
+  const [liveTotalRaised, setLiveTotalRaised] = useState(15000);
+  const [liveViewerCount, setLiveViewerCount] = useState(142);
+  const [liveLikesCount, setLiveLikesCount] = useState(2450);
+  const [isLocalMicMuted, setIsLocalMicMuted] = useState(false);
+  const [isLocalCameraOff, setIsLocalCameraOff] = useState(false);
+  const [activeGuests, setActiveGuests] = useState<
+    Array<{ id: string; name: string; handle: string; isMuted: boolean }>
+  >([]);
+  const [coHostRequests, setCoHostRequests] = useState<
+    Array<{ id: string; name: string; handle: string }>
+  >([]);
+  const [hasRequestedToJoin, setHasRequestedToJoin] = useState(false);
+  const [showLiveSummaryModal, setShowLiveSummaryModal] = useState(false);
+  const [showGiftDrawer, setShowGiftDrawer] = useState(false);
+  const [floatingHearts, setFloatingHearts] = useState<
+    Array<{ id: number; emoji: string; left: number }>
+  >([]);
+  const [liveSummaryData, setLiveSummaryData] = useState<{
+    title: string;
+    duration: string;
+    viewers: number;
+    raised: number;
+    likes: number;
+  } | null>(null);
+
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+
   const [chatMessages, setChatMessages] = useState<string[]>([
     "Bienvenue dans le direct solidaire CHARITYY.",
     "Merci à tous les donateurs et signataires !",
@@ -556,6 +589,53 @@ export default function HomePage() {
       }
     }
   }, []);
+
+  // Chronomètre de diffusion du direct TikTok
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (showLiveModal) {
+      interval = setInterval(() => {
+        setLiveDurationSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setLiveDurationSeconds(0);
+      setHasRequestedToJoin(false);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showLiveModal]);
+
+  // Formatage de la durée du live (MM:SS)
+  const formatLiveDuration = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Gestion du flux caméra/webcam réel
+  useEffect(() => {
+    if ((showLiveModal && isLiveBroadcaster) || showStartLiveModal) {
+      if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ video: true, audio: true })
+          .then((stream) => {
+            localStreamRef.current = stream;
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = stream;
+            }
+          })
+          .catch(() => {
+            // Mode sans webcam physique
+          });
+      }
+    } else {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+      }
+    }
+  }, [showLiveModal, isLiveBroadcaster, showStartLiveModal]);
 
   const showNotification = (msg: string) => {
     setActiveToast(msg);
@@ -924,26 +1004,208 @@ export default function HomePage() {
     );
   };
 
-  // Cadeau live Agora
+  // Cadeau live Agora & Débit Portefeuille
   const handleSendGift = (giftId: string) => {
     const result = processGiftTransaction({
       senderId: currentUser?.id || "usr_guest",
-      receiverId: "creator_diallo",
+      receiverId: selectedCampaign.handle || "dr_diallo",
       giftId,
       senderWalletBalanceMinor: userWalletBalance,
     });
 
     if (result.success) {
       setUserWalletBalance(result.newSenderBalanceMinor);
-      setActiveGiftAnimation(`🎁 ${result.gift.name} offert (-${result.gift.priceMinor} XOF)`);
+      setLiveTotalRaised((prev) => prev + Number(result.gift.priceMinor));
+      setActiveGiftAnimation(`🎁 ${result.gift.name} offert (+${result.gift.priceMinor} XOF)`);
       setChatMessages((prev) => [
         ...prev,
-        `🎁 ${currentUser?.displayName || "Vous"} a offert un ${result.gift.name}.`,
+        `🎁 ${currentUser?.displayName || "Vous"} a offert un ${result.gift.name} (${result.gift.priceMinor} FCFA) !`,
       ]);
-      setTimeout(() => setActiveGiftAnimation(null), 3000);
+      showNotification(`🎁 ${result.gift.name} envoyé à l'hôte avec succès !`);
+      setTimeout(() => setActiveGiftAnimation(null), 3500);
     } else {
-      alert(result.error);
+      showNotification(`⚠️ ${result.error || "Solde portefeuille insuffisant."}`);
     }
+  };
+
+  // Clic/Tap sur l'écran du live -> Cœurs flottants TikTok
+  const handleLiveTap = (e?: React.MouseEvent<any>) => {
+    const emojis = ["❤️", "💖", "🔥", "✨", "💎", "🌟", "🌹"];
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)] || "❤️";
+    const randomLeft = 20 + Math.random() * 60;
+    const heartId = Date.now() + Math.random();
+
+    setFloatingHearts((prev) => [...prev, { id: heartId, emoji: randomEmoji, left: randomLeft }]);
+    setLiveLikesCount((prev) => prev + 1);
+
+    setTimeout(() => {
+      setFloatingHearts((prev) => prev.filter((h) => h.id !== heartId));
+    }, 1800);
+  };
+
+  // Demander à monter sur scène (Spectateur TikTok)
+  const handleRequestCoHost = () => {
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+    setHasRequestedToJoin(true);
+    setChatMessages((prev) => [
+      ...prev,
+      `🙋‍♂️ ${currentUser.displayName} a demandé à monter sur scène en direct !`,
+    ]);
+    showNotification("⏳ Demande envoyée à l'hôte. En attente d'approbation...");
+
+    // En mode spectateur pour le test, simuler l'approbation de l'hôte après 2s
+    setTimeout(() => {
+      setActiveGuests((prev) => {
+        if (prev.some((g) => g.id === currentUser.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: currentUser.id,
+            name: currentUser.displayName,
+            handle: currentUser.username,
+            isMuted: false,
+          },
+        ];
+      });
+      setChatMessages((prev) => [
+        ...prev,
+        `🎉 ${currentUser.displayName} est monté sur scène avec l'hôte !`,
+      ]);
+      showNotification("🎉 L'hôte a accepté votre demande ! Vous êtes en direct sur scène (écran divisé).");
+    }, 2000);
+  };
+
+  // Accepter un invité sur scène (Hôte TikTok)
+  const handleAcceptCoHost = (guest: { id: string; name: string; handle: string }) => {
+    setCoHostRequests((prev) => prev.filter((r) => r.id !== guest.id));
+    setActiveGuests((prev) => [
+      ...prev,
+      {
+        id: guest.id,
+        name: guest.name,
+        handle: guest.handle,
+        isMuted: false,
+      },
+    ]);
+    setChatMessages((prev) => [
+      ...prev,
+      `🎉 @${guest.handle} est monté sur scène en direct !`,
+    ]);
+    showNotification(`🎉 Vous avez fait monter @${guest.handle} sur scène (écran divisé) !`);
+  };
+
+  // Refuser un invité (Hôte TikTok)
+  const handleRejectCoHost = (guestId: string) => {
+    setCoHostRequests((prev) => prev.filter((r) => r.id !== guestId));
+    showNotification("Demande de scène refusée.");
+  };
+
+  // Faire descendre un invité ou quitter la scène
+  const handleRemoveGuest = (guestId: string) => {
+    setActiveGuests((prev) => prev.filter((g) => g.id !== guestId));
+    if (currentUser?.id === guestId) {
+      setHasRequestedToJoin(false);
+      showNotification("Vous êtes descendu de scène.");
+    } else {
+      showNotification("Invité descendu de scène.");
+    }
+    setChatMessages((prev) => [...prev, "🚪 Un participant est descendu de scène."]);
+  };
+
+  // Lancer le LIVE (Créateur TikTok Studio)
+  const handleStartLiveSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const title = liveTitleInput.trim() || `Direct solidaire de ${currentUser.displayName}`;
+    setIsLiveBroadcaster(true);
+    setLiveDurationSeconds(0);
+    setLiveTotalRaised(0);
+    setLiveViewerCount(38);
+    setLiveLikesCount(120);
+    setActiveGuests([]);
+    setHasRequestedToJoin(false);
+
+    // Si une cause existante est liée, l'utiliser comme selectedCampaign
+    const linked = feedItems.find((c) => c.id === liveCampaignSelection);
+    if (linked) {
+      setSelectedCampaign({
+        ...linked,
+        hasLive: true,
+        liveHostName: currentUser.displayName,
+      });
+    } else {
+      setSelectedCampaign({
+        id: `live_${Date.now()}`,
+        uniqueKey: `live_${Date.now()}_camp`,
+        handle: currentUser.username,
+        title: title,
+        story: "Direct solidaire en cours animé par le porteur citoyen.",
+        authorName: currentUser.displayName,
+        authorRole: "Hôte du Direct",
+        city: userCity || "Cotonou, Bénin",
+        countryCode: "BJ",
+        category: "EDUCATION",
+        categoryLabel: "🔴 EN DIRECT SOLIDAIRE",
+        currency: "XOF",
+        goalMinor: 2_000_000n,
+        collectedMinor: 0n,
+        isCertified: true,
+        isUrgent: true,
+        hasLive: true,
+        liveHostName: currentUser.displayName,
+        liveViewers: 38,
+        bgGradient: "from-red-950 via-neutral-900 to-black",
+        durationLabel: "EN DIRECT",
+        signaturesCount: 1,
+        likesCount: 120,
+        commentsCount: 0,
+        sharesCount: 0,
+        viewsCount: 38,
+        commentsList: [],
+      });
+    }
+
+    setShowStartLiveModal(false);
+    setShowLiveModal(true);
+    showNotification("🔴 Vous êtes en DIRECT sur CHARITYY (Diffusion Agora RTC activée) !");
+
+    // Simuler l'arrivée d'une demande de co-hôte après 4s pour permettre à l'hôte de tester la division d'écran
+    setTimeout(() => {
+      setCoHostRequests([
+        {
+          id: "guest_arminel",
+          name: "Arminel NOUATIN",
+          handle: "arminel_benin",
+        },
+      ]);
+    }, 4000);
+  };
+
+  // Terminer le LIVE (Hôte TikTok)
+  const handleEndLive = () => {
+    const summary = {
+      title: selectedCampaign.title,
+      duration: formatLiveDuration(liveDurationSeconds),
+      viewers: liveViewerCount + Math.floor(liveDurationSeconds * 2.5),
+      raised: liveTotalRaised,
+      likes: liveLikesCount,
+    };
+    setLiveSummaryData(summary);
+    setShowLiveModal(false);
+    setIsLiveBroadcaster(false);
+    setActiveGuests([]);
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+    setShowLiveSummaryModal(true);
   };
 
   // Message chat en direct
@@ -1058,15 +1320,28 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ACTIONS DE DROITE TIKTOK (Importer, Messages, Activité, Profil) */}
-        <div className="flex items-center gap-3.5">
+        {/* ACTIONS DE DROITE TIKTOK (Importer, Live Studio, Messages, Activité, Profil) */}
+        <div className="flex items-center gap-2.5">
+          {/* BOUTON 🔴 LANCER UN LIVE (TIKTOK LIVE STUDIO) */}
+          <button
+            onClick={() => {
+              if (!currentUser) setShowAuthModal(true);
+              else setShowStartLiveModal(true);
+            }}
+            className="flex items-center gap-1.5 bg-[#FE2C55] hover:bg-[#e0264b] text-white font-extrabold text-xs px-3 py-2 rounded-md transition shadow flex-shrink-0"
+            title="Lancer un direct solidaire Agora RTC"
+          >
+            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+            <span>🔴 Lancer un LIVE</span>
+          </button>
+
           {/* BOUTON + IMPORTER (Style TikTok Studio) */}
           <button
             onClick={() => {
               if (!currentUser) setShowAuthModal(true);
               else setShowCreateCampaignModal(true);
             }}
-            className="flex items-center gap-2 border border-neutral-700 hover:bg-neutral-800/90 text-white font-bold text-xs px-4 py-2 rounded-md transition shadow-sm"
+            className="flex items-center gap-2 border border-neutral-700 hover:bg-neutral-800/90 text-white font-bold text-xs px-3.5 py-2 rounded-md transition shadow-sm"
           >
             <span className="text-sm font-black">+</span>
             <span>Importer</span>
@@ -1275,6 +1550,20 @@ export default function HomePage() {
                 99+
               </span>
             </button>
+
+            {/* BOUTON LANCER LIVE DANS LA SIDEBAR */}
+            <div className="pt-1 pb-1">
+              <button
+                onClick={() => {
+                  if (!currentUser) setShowAuthModal(true);
+                  else setShowStartLiveModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-[#FE2C55] hover:opacity-95 text-white font-extrabold text-xs py-2 rounded-lg transition shadow-md"
+              >
+                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                <span>🔴 Lancer un LIVE</span>
+              </button>
+            </div>
 
             {/* BOUTON PROFIL DANS LA SIDEBAR DESKTOP */}
             <button
@@ -1970,8 +2259,20 @@ export default function HomePage() {
                   <div className="text-[10px] text-neutral-400 pt-0.5">📍 {userCity}</div>
                 </div>
 
-                {/* Boutons d'action du profil (Modifier, Partager, Portefeuille) */}
-                <div className="flex items-center gap-2 pt-1">
+                {/* Boutons d'action du profil (Lancer un live, Modifier, Photo, Partager) */}
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setShowProfileModal(false);
+                      setShowStartLiveModal(true);
+                    }}
+                    className="bg-gradient-to-r from-red-600 to-[#FE2C55] hover:opacity-95 text-white font-extrabold text-xs px-4 py-2 rounded-lg transition shadow flex items-center gap-1.5 animate-pulse"
+                    title="Lancer un direct solidaire Agora RTC"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                    <span>🔴 Lancer un LIVE</span>
+                  </button>
+
                   <button
                     onClick={() => {
                       setEditDisplayName(currentUser.displayName);
@@ -1980,7 +2281,7 @@ export default function HomePage() {
                       setEditCityText(userCity);
                       setShowEditProfileModal(true);
                     }}
-                    className="bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs px-4 py-2 rounded-lg border border-neutral-700 transition"
+                    className="bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg border border-neutral-700 transition"
                   >
                     ✏️ Modifier le profil
                   </button>
@@ -3175,89 +3476,552 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 8 : DIRECT SOLIDAIRE (AGORA RTC & CADEAUX) */}
+      {/* MODAL 8 : DIRECT SOLIDAIRE TIKTOK (AGORA RTC, DIVISION D'ÉCRAN & MULTI-GUEST) */}
       {showLiveModal && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col max-w-md mx-auto w-full text-white">
-          <div className="p-3 border-b border-white/10 flex justify-between items-center bg-black/80">
-            <div>
-              <span className="text-xs font-bold text-[#FE2C55] uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#FE2C55] animate-ping" />
-                EN DIRECT SOLIDAIRE
-              </span>
-              <span className="text-xs text-neutral-300">
-                Hôte : {selectedCampaign.liveHostName || selectedCampaign.authorName}
-              </span>
+        <div className="fixed inset-0 z-50 bg-black flex flex-col max-w-lg mx-auto w-full text-white select-none overflow-hidden">
+          {/* EN-TÊTE DU LIVE TIKTOK (HÔTE, STATS EN DIRECT, TIMER, BOUTON QUITTER / TERMINER) */}
+          <div className="p-3 border-b border-white/10 flex justify-between items-center bg-black/80 backdrop-blur z-30">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-400 to-[#FE2C55] p-0.5">
+                <div className="w-full h-full bg-black rounded-full flex items-center justify-center font-black text-xs">
+                  {(isLiveBroadcaster ? currentUser?.displayName : selectedCampaign.authorName)?.charAt(0)}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs text-white truncate max-w-[120px]">
+                    {isLiveBroadcaster ? currentUser?.displayName : (selectedCampaign.liveHostName || selectedCampaign.authorName)}
+                  </span>
+                  <span className="bg-[#FE2C55] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    LIVE
+                  </span>
+                </div>
+                <div className="text-[10px] text-neutral-400 flex items-center gap-1.5 font-mono">
+                  <span>⏱️ {formatLiveDuration(liveDurationSeconds)}</span>
+                  <span>•</span>
+                  <span>👥 {liveViewerCount} spectateurs</span>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => setShowLiveModal(false)}
-              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full font-medium"
-            >
-              Quitter
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* CAGNOTTE DU LIVE RÉCOLTÉE */}
+              <div className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold text-emerald-400 flex items-center gap-1">
+                <span>💎</span>
+                <span>{liveTotalRaised.toLocaleString()} F</span>
+              </div>
+
+              {/* BOUTON TERMINER (SI HÔTE) OU QUITTER (SI SPECTATEUR) */}
+              {isLiveBroadcaster ? (
+                <button
+                  onClick={handleEndLive}
+                  className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full font-bold shadow-md transition"
+                >
+                  Terminer
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowLiveModal(false)}
+                  className="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full font-medium transition"
+                >
+                  Quitter
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="flex-1 relative flex items-center justify-center bg-neutral-950 p-4">
-            <div className="text-center space-y-2 text-neutral-400">
-              <div className="w-16 h-16 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center mx-auto text-2xl shadow-inner">
-                🎥
+          {/* ZONE PRINCIPALE DE DIFFUSION : GÈRE LA DIVISION OU MULTIPLICATION D'ÉCRAN */}
+          <div
+            onClick={handleLiveTap}
+            className="flex-1 relative bg-neutral-950 overflow-hidden cursor-pointer flex flex-col justify-center"
+          >
+            {/* NOTIFICATION DE DEMANDE DE MONTÉE SUR SCÈNE (POUR L'HÔTE) */}
+            {isLiveBroadcaster && coHostRequests.length > 0 && coHostRequests[0] && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-3 left-3 right-3 z-40 bg-neutral-900/95 border border-[#25F4EE] rounded-xl p-2.5 shadow-2xl flex items-center justify-between animate-bounce"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span className="text-xl">🙋‍♂️</span>
+                  <div className="truncate text-xs">
+                    <span className="font-bold text-white truncate block">{coHostRequests[0].name}</span>
+                    <span className="text-neutral-400 text-[10px]">demande à monter sur scène (Co-hôte)</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => coHostRequests[0] && handleAcceptCoHost(coHostRequests[0])}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow"
+                  >
+                    Accepter
+                  </button>
+                  <button
+                    onClick={() => coHostRequests[0] && handleRejectCoHost(coHostRequests[0].id)}
+                    className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-[11px] px-2.5 py-1.5 rounded-lg transition"
+                  >
+                    Refuser
+                  </button>
+                </div>
               </div>
-              <p className="text-xs font-medium text-neutral-300">Flux vidéo Agora RTC interactif (faible latence)</p>
-              <p className="text-[11px] text-neutral-500">
-                Canal actif : <code className="text-neutral-400">{selectedCampaign.id}</code>
-              </p>
+            )}
+
+            {/* ANIMATION CADEAU REÇU EN GRAND */}
+            {activeGiftAnimation && (
+              <div className="absolute top-1/4 left-1/2 -translate-x-1/2 z-40 bg-black/90 border border-emerald-400 px-5 py-2.5 rounded-full text-xs font-black text-emerald-300 shadow-2xl animate-bounce flex items-center gap-2">
+                <span className="text-xl">🎁</span>
+                <span>{activeGiftAnimation}</span>
+              </div>
+            )}
+
+            {/* CŒURS FLOTTANTS TIKTOK */}
+            <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+              {floatingHearts.map((h) => (
+                <div
+                  key={h.id}
+                  style={{ left: `${h.left}%` }}
+                  className="absolute bottom-20 text-3xl opacity-90 animate-bounce transition-all duration-1000 transform -translate-y-48"
+                >
+                  {h.emoji}
+                </div>
+              ))}
             </div>
 
-            {activeGiftAnimation && (
-              <div className="absolute top-1/4 bg-black/80 px-4 py-2 rounded-full border border-white/20 text-xs font-bold animate-bounce text-emerald-400">
-                {activeGiftAnimation}
+            {/* LAYOUT VIDÉO : MULTIPLICATION / DIVISION D'ÉCRAN TIKTOK */}
+            {activeGuests.length === 0 ? (
+              /* CAS 1 : 1 PARTICIPANT (HÔTE SOLO PLEIN ÉCRAN) */
+              <div className="relative w-full h-full flex items-center justify-center bg-black">
+                {isLiveBroadcaster && localStreamRef.current && !isLocalCameraOff ? (
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-b ${selectedCampaign.bgGradient} flex flex-col items-center justify-center p-6 text-center`}>
+                    <div className="relative mb-3">
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-400 via-yellow-400 to-[#FE2C55] p-1 animate-pulse">
+                        <div className="w-full h-full bg-black rounded-full flex items-center justify-center font-black text-2xl text-white">
+                          {(isLiveBroadcaster ? currentUser?.displayName : selectedCampaign.authorName)?.charAt(0)}
+                        </div>
+                      </div>
+                      <span className="absolute bottom-0 right-0 bg-[#FE2C55] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase">
+                        Hôte
+                      </span>
+                    </div>
+                    <div className="font-extrabold text-sm text-white">
+                      {isLiveBroadcaster ? currentUser?.displayName : (selectedCampaign.liveHostName || selectedCampaign.authorName)}
+                    </div>
+                    <div className="text-xs text-neutral-400 font-mono">
+                      @{isLiveBroadcaster ? currentUser?.username : selectedCampaign.handle}
+                    </div>
+                    <div className="mt-4 px-3 py-1 bg-black/60 backdrop-blur rounded-full border border-white/10 text-[11px] text-emerald-400 font-mono flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span>Direct Agora RTC HD actif</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : activeGuests.length === 1 ? (
+              /* CAS 2 : 2 PARTICIPANTS (DIVISION D'ÉCRAN 50/50 DUO / CO-HOSTING TIKTOK) */
+              <div className="w-full h-full grid grid-cols-1 md:grid-cols-2 grid-rows-2 md:grid-rows-1 gap-1 p-1 bg-black">
+                {/* CASE 1 : HÔTE */}
+                <div className="relative rounded-xl overflow-hidden bg-neutral-900 border-2 border-red-500/80 flex flex-col justify-between p-2">
+                  <div className="absolute top-2 left-2 z-20 bg-black/70 backdrop-blur px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px] font-bold text-white">
+                    <span className="text-yellow-400">👑</span>
+                    <span className="truncate max-w-[120px]">
+                      {isLiveBroadcaster ? currentUser?.displayName : selectedCampaign.authorName} (Hôte)
+                    </span>
+                  </div>
+                  <div className="absolute top-2 right-2 z-20 bg-black/70 backdrop-blur px-1.5 py-0.5 rounded-full text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>PARLE</span>
+                  </div>
+
+                  {isLiveBroadcaster && localStreamRef.current && !isLocalCameraOff ? (
+                    <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-red-950/40 to-neutral-950">
+                      <div className="w-16 h-16 rounded-full bg-neutral-800 border-2 border-red-500 flex items-center justify-center font-black text-xl text-white mb-2 shadow">
+                        {(isLiveBroadcaster ? currentUser?.displayName : selectedCampaign.authorName)?.charAt(0)}
+                      </div>
+                      <span className="text-xs font-bold text-white">
+                        {isLiveBroadcaster ? currentUser?.displayName : selectedCampaign.authorName}
+                      </span>
+                      <span className="text-[10px] text-neutral-400">Hôte du direct</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* CASE 2 : INVITÉ MONTÉ SUR SCÈNE */}
+                {activeGuests[0] && (
+                  <div className="relative rounded-xl overflow-hidden bg-neutral-900 border-2 border-cyan-400/80 flex flex-col justify-between p-2">
+                    <div className="absolute top-2 left-2 z-20 bg-black/70 backdrop-blur px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px] font-bold text-white">
+                      <span className="text-cyan-400">🙋‍♂️</span>
+                      <span className="truncate max-w-[120px]">{activeGuests[0].name} (Invité)</span>
+                    </div>
+                    <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+                      {isLiveBroadcaster && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            activeGuests[0] && handleRemoveGuest(activeGuests[0].id);
+                          }}
+                          className="bg-red-600/90 hover:bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow"
+                          title="Faire descendre l'invité"
+                        >
+                          ✕ Descendre
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-cyan-950/40 to-neutral-950">
+                      <div className="w-16 h-16 rounded-full bg-neutral-800 border-2 border-cyan-400 flex items-center justify-center font-black text-xl text-white mb-2 shadow animate-pulse">
+                        {activeGuests[0].name.charAt(0)}
+                      </div>
+                      <span className="text-xs font-bold text-cyan-300">{activeGuests[0].name}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono">@{activeGuests[0].handle} • 🎤 En direct</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* CAS 3 : 3 OU 4 PARTICIPANTS (GRILLE MULTI-INVITÉS 2x2 TIKTOK) */
+              <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-1 p-1 bg-black">
+                {/* HÔTE */}
+                <div className="relative rounded-xl overflow-hidden bg-neutral-900 border-2 border-red-500/80 flex items-center justify-center">
+                  <span className="absolute top-1.5 left-1.5 z-10 text-[9px] bg-black/70 px-1.5 py-0.5 rounded text-white font-bold">
+                    👑 Hôte
+                  </span>
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full bg-neutral-800 border border-red-500 mx-auto flex items-center justify-center font-bold text-sm">
+                      {(isLiveBroadcaster ? currentUser?.displayName : selectedCampaign.authorName)?.charAt(0)}
+                    </div>
+                    <span className="text-[10px] font-bold block pt-1 text-white truncate max-w-[90px]">
+                      {isLiveBroadcaster ? currentUser?.displayName : selectedCampaign.authorName}
+                    </span>
+                  </div>
+                </div>
+
+                {/* INVITÉS SUR SCÈNE */}
+                {activeGuests.map((guest, idx) => (
+                  <div
+                    key={guest.id}
+                    className="relative rounded-xl overflow-hidden bg-neutral-900 border-2 border-cyan-400/80 flex items-center justify-center"
+                  >
+                    <span className="absolute top-1.5 left-1.5 z-10 text-[9px] bg-black/70 px-1.5 py-0.5 rounded text-cyan-300 font-bold">
+                      Invité {idx + 1}
+                    </span>
+                    {isLiveBroadcaster && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveGuest(guest.id);
+                        }}
+                        className="absolute top-1.5 right-1.5 z-10 bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    <div className="text-center">
+                      <div className="w-12 h-12 rounded-full bg-neutral-800 border border-cyan-400 mx-auto flex items-center justify-center font-bold text-sm text-cyan-300">
+                        {guest.name.charAt(0)}
+                      </div>
+                      <span className="text-[10px] font-bold block pt-1 text-neutral-200 truncate max-w-[90px]">
+                        {guest.name}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          <div className="h-40 bg-black/70 p-3 overflow-y-auto space-y-1.5 text-xs border-t border-white/10">
-            {chatMessages.map((msg, i) => (
-              <p key={i} className="text-neutral-200">
-                {msg}
-              </p>
+          {/* FLUX DE CHAT EN DIRECT EN SUPERPOSITION */}
+          <div className="h-36 bg-gradient-to-t from-black via-black/80 to-transparent p-3 overflow-y-auto space-y-1 text-xs border-t border-white/10 z-20">
+            {chatMessages.slice(-8).map((msg, i) => (
+              <div key={i} className="text-neutral-200 text-[11px] leading-snug">
+                {msg.startsWith("🎁") ? (
+                  <span className="text-amber-300 font-bold bg-amber-400/10 px-2 py-0.5 rounded-md inline-block">
+                    {msg}
+                  </span>
+                ) : msg.startsWith("🎉") ? (
+                  <span className="text-cyan-300 font-bold bg-cyan-400/10 px-2 py-0.5 rounded-md inline-block">
+                    {msg}
+                  </span>
+                ) : (
+                  msg
+                )}
+              </div>
             ))}
           </div>
 
-          <div className="p-3 bg-neutral-900 space-y-2">
-            <div className="flex items-center justify-between text-xs text-neutral-400">
-              <span>
-                Solde wallet : <strong className="text-white font-mono">{formatCurrency(userWalletBalance, "XOF")}</strong>
-              </span>
-              <span className="text-[10px] text-neutral-400">Cadeaux = Débit ledger immédiat</span>
-            </div>
+          {/* TIROIR DE CADEAUX SOLIDAIRES TIKTOK (AFFICHÉ SI TOGGLE) */}
+          {showGiftDrawer && (
+            <div className="p-3 bg-neutral-900 border-t border-neutral-800 space-y-2 z-30 animate-fade-in">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  <span>🎁</span> Cadeaux Solidaires TikTok
+                </span>
+                <span className="text-neutral-400 text-[11px]">
+                  Solde : <strong className="text-emerald-400 font-mono">{formatCurrency(userWalletBalance, "XOF")}</strong>
+                </span>
+              </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {DEFAULT_GIFT_CATALOG.map((gift) => (
+              <div className="grid grid-cols-4 gap-2">
+                {DEFAULT_GIFT_CATALOG.map((gift) => (
+                  <button
+                    key={gift.id}
+                    onClick={() => handleSendGift(gift.id)}
+                    className="p-2 bg-black/60 hover:bg-neutral-800 rounded-xl border border-neutral-700/80 text-center transition group active:scale-95"
+                  >
+                    <div className="text-lg group-hover:scale-110 transition-transform">
+                      {gift.name.split(" ")[0]}
+                    </div>
+                    <div className="text-[10px] font-bold text-white truncate pt-0.5">
+                      {gift.name.substring(2)}
+                    </div>
+                    <div className="text-[9px] font-mono text-emerald-400 font-bold">
+                      {gift.priceMinor.toString()} F
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* BARRE D'ACTIONS INFÉRIEURE : DIFFÉRENCIÉE SELON CRÉATEUR OU SPECTATEUR */}
+          <div className="p-3 bg-black border-t border-neutral-800 space-y-2 z-30">
+            <div className="flex items-center gap-2">
+              {/* SAISIE DE MESSAGE DE CHAT */}
+              <form onSubmit={handleSendChatMessage} className="flex-1 flex gap-1.5">
+                <input
+                  type="text"
+                  value={liveChatInput}
+                  onChange={(e) => setLiveChatInput(e.target.value)}
+                  placeholder="Écrire dans le direct..."
+                  className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FE2C55]"
+                />
                 <button
-                  key={gift.id}
-                  onClick={() => handleSendGift(gift.id)}
-                  className="bg-white/10 hover:bg-white/20 p-2 rounded-xl text-left shrink-0 border border-white/10 text-xs min-w-[90px] transition"
+                  type="submit"
+                  className="bg-[#FE2C55] hover:bg-[#e0264b] text-white text-xs font-bold px-3 py-2 rounded-xl transition"
                 >
-                  <div className="font-semibold text-white">{gift.name}</div>
-                  <div className="text-[10px] text-neutral-400">{gift.priceMinor.toString()} F</div>
+                  Envoyer
                 </button>
-              ))}
+              </form>
+
+              {/* COMMANDES SPÉCIFIQUES CRÉATEUR (HÔTE) */}
+              {isLiveBroadcaster ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setIsLocalMicMuted(!isLocalMicMuted)}
+                    className={`p-2 rounded-xl text-xs font-bold border ${isLocalMicMuted ? "bg-red-600/30 border-red-500 text-red-300" : "bg-neutral-800 border-neutral-700 text-white"}`}
+                    title={isLocalMicMuted ? "Activer le micro" : "Couper le micro"}
+                  >
+                    {isLocalMicMuted ? "🔇" : "🎤"}
+                  </button>
+                  <button
+                    onClick={() => setIsLocalCameraOff(!isLocalCameraOff)}
+                    className={`p-2 rounded-xl text-xs font-bold border ${isLocalCameraOff ? "bg-red-600/30 border-red-500 text-red-300" : "bg-neutral-800 border-neutral-700 text-white"}`}
+                    title={isLocalCameraOff ? "Activer la caméra" : "Couper la caméra"}
+                  >
+                    {isLocalCameraOff ? "🚫" : "📹"}
+                  </button>
+                </div>
+              ) : (
+                /* COMMANDES SPÉCIFIQUES SPECTATEUR (DEMANDER À MONTER, CADEAUX, J'AIME) */
+                <div className="flex items-center gap-1.5">
+                  {/* BOUTON DEMANDER À MONTER SUR SCÈNE / DESCENDRE */}
+                  {activeGuests.some((g) => g.id === currentUser?.id) ? (
+                    <button
+                      onClick={() => currentUser && handleRemoveGuest(currentUser.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2.5 py-2 rounded-xl flex items-center gap-1 transition shadow"
+                    >
+                      <span>🚪</span>
+                      <span>Descendre</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleRequestCoHost}
+                      disabled={hasRequestedToJoin}
+                      className={`text-[10px] font-extrabold px-2.5 py-2 rounded-xl flex items-center gap-1 transition shadow ${
+                        hasRequestedToJoin
+                          ? "bg-neutral-800 text-neutral-400 cursor-not-allowed"
+                          : "bg-cyan-500 hover:bg-cyan-400 text-black animate-pulse"
+                      }`}
+                    >
+                      <span>🙋‍♂️</span>
+                      <span>{hasRequestedToJoin ? "En attente..." : "Monter"}</span>
+                    </button>
+                  )}
+
+                  {/* BOUTON TIROIR CADEAUX */}
+                  <button
+                    onClick={() => setShowGiftDrawer(!showGiftDrawer)}
+                    className="p-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:opacity-90 text-black font-bold text-xs rounded-xl shadow transition"
+                    title="Offrir un cadeau solidaire"
+                  >
+                    🎁
+                  </button>
+
+                  {/* BOUTON J'AIME */}
+                  <button
+                    onClick={handleLiveTap}
+                    className="p-2 bg-neutral-800 hover:bg-neutral-700 text-[#FE2C55] font-bold text-xs rounded-xl border border-neutral-700 transition"
+                    title="Envoyer des cœurs"
+                  >
+                    ❤️ {liveLikesCount >= 1000 ? `${(liveLikesCount / 1000).toFixed(1)}k` : liveLikesCount}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 8BIS : CONFIGURATION DU DIRECT (TIKTOK LIVE STUDIO) */}
+      {showStartLiveModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-neutral-900 text-white w-full max-w-md rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
+                <h3 className="font-bold text-sm">CHARITYY Live Studio</h3>
+              </div>
+              <button
+                onClick={() => setShowStartLiveModal(false)}
+                className="text-neutral-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleSendChatMessage} className="flex gap-2">
-              <input
-                type="text"
-                value={liveChatInput}
-                onChange={(e) => setLiveChatInput(e.target.value)}
-                placeholder="Écrire un message en direct..."
-                className="flex-1 bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-              />
+            <form onSubmit={handleStartLiveSubmit} className="space-y-4 text-xs">
+              {/* RETOUR CAMÉRA PRÉ-DIRECT */}
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-video border border-neutral-700 flex items-center justify-center">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2 left-2 bg-black/70 backdrop-blur px-2.5 py-1 rounded-full text-[10px] text-emerald-400 font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Caméra prête • HD 720p</span>
+                </div>
+                <div className="absolute bottom-2 right-2 flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsLocalMicMuted(!isLocalMicMuted)}
+                    className={`p-2 rounded-full text-xs ${isLocalMicMuted ? "bg-red-600 text-white" : "bg-black/60 text-white"}`}
+                  >
+                    {isLocalMicMuted ? "🔇" : "🎤"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsLocalCameraOff(!isLocalCameraOff)}
+                    className={`p-2 rounded-full text-xs ${isLocalCameraOff ? "bg-red-600 text-white" : "bg-black/60 text-white"}`}
+                  >
+                    {isLocalCameraOff ? "🚫" : "📹"}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold block text-neutral-300 mb-1">Titre de votre direct solidaire :</label>
+                <input
+                  type="text"
+                  required
+                  value={liveTitleInput}
+                  onChange={(e) => setLiveTitleInput(e.target.value)}
+                  placeholder="Ex: Urgence Forages Zè : Point en direct avec les riverains"
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#FE2C55]"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold block text-neutral-300 mb-1">Rattacher à une cagnotte / cause solidaire :</label>
+                <select
+                  value={liveCampaignSelection}
+                  onChange={(e) => setLiveCampaignSelection(e.target.value)}
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                >
+                  <option value="free">🌟 Direct solidaire libre (Sensibilisation & Mobilisation citoyenne)</option>
+                  {feedItems.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.categoryLabel} : {c.title.substring(0, 42)}...
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="p-3 bg-neutral-950 rounded-xl border border-neutral-800 text-[11px] space-y-1 text-neutral-400">
+                <div className="font-bold text-white flex items-center gap-1.5 text-xs">
+                  <span>🛡️</span> Diffusion Agora RTC & Division d&apos;Écran
+                </div>
+                <p>
+                  Les spectateurs pourront vous envoyer des cadeaux solidaires déduits de leur wallet et demander à monter sur scène avec vous en écran divisé (co-hosting).
+                </p>
+              </div>
+
               <button
                 type="submit"
-                className="bg-[#FE2C55] text-white text-xs font-bold px-4 rounded-xl hover:bg-[#e0264b]"
+                className="w-full bg-gradient-to-r from-red-600 to-[#FE2C55] hover:opacity-95 text-white font-extrabold text-xs py-3 rounded-xl shadow-lg transition flex items-center justify-center gap-2"
               >
-                Envoyer
+                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                <span>🔴 Démarrer le LIVE maintenant</span>
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 8TER : RAPPORT DE MISSION SOLIDAIRE DE FIN DE DIRECT */}
+      {showLiveSummaryModal && liveSummaryData && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-6 space-y-4 border border-neutral-800 shadow-2xl text-center animate-scale-in">
+            <div className="w-16 h-16 rounded-full bg-red-600/20 border-2 border-red-500 mx-auto flex items-center justify-center text-3xl">
+              🎉
+            </div>
+
+            <div>
+              <h3 className="font-black text-lg text-white">LIVE TERMINÉ</h3>
+              <p className="text-xs text-neutral-400 line-clamp-1 pt-1">{liveSummaryData.title}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1 text-left">
+              <div className="p-2.5 bg-black/60 rounded-xl border border-neutral-800">
+                <div className="text-[10px] text-neutral-400">Durée du direct</div>
+                <div className="text-base font-black font-mono text-white pt-0.5">{liveSummaryData.duration}</div>
+              </div>
+              <div className="p-2.5 bg-black/60 rounded-xl border border-neutral-800">
+                <div className="text-[10px] text-neutral-400">Spectateurs uniques</div>
+                <div className="text-base font-black font-mono text-sky-400 pt-0.5">{liveSummaryData.viewers}</div>
+              </div>
+              <div className="p-2.5 bg-black/60 rounded-xl border border-neutral-800">
+                <div className="text-[10px] text-neutral-400">Fonds récoltés</div>
+                <div className="text-base font-black font-mono text-emerald-400 pt-0.5">
+                  {liveSummaryData.raised.toLocaleString()} F
+                </div>
+              </div>
+              <div className="p-2.5 bg-black/60 rounded-xl border border-neutral-800">
+                <div className="text-[10px] text-neutral-400">J&apos;aime reçus</div>
+                <div className="text-base font-black font-mono text-[#FE2C55] pt-0.5">{liveSummaryData.likes}</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowLiveSummaryModal(false);
+                setLiveSummaryData(null);
+              }}
+              className="w-full bg-white hover:bg-neutral-200 text-black font-extrabold text-xs py-3 rounded-xl transition shadow"
+            >
+              Fermer et retourner au fil
+            </button>
           </div>
         </div>
       )}
