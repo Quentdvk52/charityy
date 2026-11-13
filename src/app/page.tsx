@@ -33,10 +33,31 @@ interface CampaignItem {
   signaturesCount: number;
   likesCount: number;
   isLiked?: boolean;
+  isFavorited?: boolean;
   commentsCount: number;
   sharesCount: number;
+  viewsCount: number;
   commentsList: Array<{ user: string; text: string; time: string }>;
   isFollowing?: boolean;
+}
+
+// Interface d'un profil de créateur ou utilisateur
+interface CreatorProfile {
+  handle: string;
+  name: string;
+  avatarUrl?: string | null;
+  role: string;
+  city: string;
+  countryCode: string;
+  bio: string;
+  verified: boolean;
+  isLive: boolean;
+  liveViewers?: number;
+  followersCount: number;
+  followingCount: number;
+  likesCount: number;
+  isFollowing: boolean;
+  officialDoc: string;
 }
 
 // Données initiales des causes du fil TikTok
@@ -67,6 +88,7 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
     likesCount: 2480,
     commentsCount: 184,
     sharesCount: 620,
+    viewsCount: 38400,
     commentsList: [
       { user: "Arminel NOUATIN", text: "Je soutiens de tout cœur cette opération. Don effectué !", time: "Il y a 5m" },
       { user: "Awa Traoré", text: "Courage à la petite Aminata et merci au Dr. Diallo.", time: "Il y a 20m" },
@@ -97,6 +119,7 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
     likesCount: 1920,
     commentsCount: 96,
     sharesCount: 410,
+    viewsCount: 24500,
     commentsList: [
       { user: "Quentin DAVAKAN", text: "Projet exemplaire et vérifié. Bravo pour l'engagement terrain !", time: "Il y a 10m" },
       { user: "Sœur Jeanne", text: "Le dispensaire de Zè attend ce raccordement avec impatience.", time: "Il y a 2h" },
@@ -126,6 +149,7 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
     likesCount: 940,
     commentsCount: 48,
     sharesCount: 175,
+    viewsCount: 12800,
     commentsList: [
       { user: "Moussa Diop", text: "J'ai signé en tant que personne ressource de Thiès !", time: "Il y a 40m" },
       { user: "Aminata B.", text: "Nos enfants méritent d'étudier dans la dignité.", time: "Il y a 3h" },
@@ -157,6 +181,7 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
     likesCount: 1540,
     commentsCount: 82,
     sharesCount: 330,
+    viewsCount: 18900,
     commentsList: [
       { user: "Yawa A.", text: "Sauver des nouveau-nés est la plus noble des causes.", time: "Il y a 20m" },
       { user: "Arminel NOUATIN", text: "Don solidaire envoyé via mon wallet Bénin.", time: "Il y a 45m" },
@@ -188,6 +213,7 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
     likesCount: 3120,
     commentsCount: 210,
     sharesCount: 890,
+    viewsCount: 42100,
     commentsList: [
       { user: "Samuel E.", text: "Présent sur le terrain avec les bénévoles. Merci aux donateurs !", time: "Il y a 5m" },
       { user: "Chantal M.", text: "Kits alimentaires bien distribués aux mamans ce matin.", time: "Il y a 30m" },
@@ -195,7 +221,149 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
   },
 ];
 
-// Liste des comptes suivis / suggérés (comme sur la barre latérale TikTok)
+// Base de données des profils créateurs consultables
+const CREATORS_DIRECTORY: Record<string, CreatorProfile> = {
+  dr_diallo: {
+    handle: "dr_diallo",
+    name: "Dr. Mamadou Diallo",
+    role: "Chirurgien pédiatrique au CHU",
+    city: "Abidjan",
+    countryCode: "CI",
+    bio: "Chirurgien pédiatrique au CHU. Engagé pour opérer les enfants défavorisés d'Afrique de l'Ouest. Toutes les causes publiées sont certifiées par devis médical.",
+    verified: true,
+    isLive: true,
+    liveViewers: 142,
+    followersCount: 24500,
+    followingCount: 68,
+    likesCount: 89400,
+    isFollowing: false,
+    officialDoc: "CHU-PEDIATRIE-CERT-2026",
+  },
+  arminel_benin: {
+    handle: "arminel_benin",
+    name: "Arminel NOUATIN",
+    role: "Coordination Citoyenne Forages",
+    city: "Zè / Cotonou",
+    countryCode: "BJ",
+    bio: "Citoyen engagé pour l'accès universel à l'eau potable au Bénin. Chaque forage solaire alimente une école et un dispensaire. Donateur actif.",
+    verified: true,
+    isLive: false,
+    followersCount: 18200,
+    followingCount: 142,
+    likesCount: 46700,
+    isFollowing: true,
+    officialDoc: "ONG-EAU-BENIN-RECEPISSE-941",
+  },
+  quentindavakan: {
+    handle: "quentindavakan",
+    name: "Quentin DAVAKAN",
+    role: "Super-Admin & Fondateur CHARITYY",
+    city: "Cotonou",
+    countryCode: "BJ",
+    bio: "Fondateur & Administrateur Général CHARITYY. Sécurisation cryptographique, audit anti-fraude et traçabilité intégrale des cagnottes solidaires.",
+    verified: true,
+    isLive: false,
+    followersCount: 54300,
+    followingCount: 38,
+    likesCount: 142000,
+    isFollowing: false,
+    officialDoc: "CHARITYY-GOV-SUPERADMIN-KEY-001",
+  },
+  princesse_ataroi: {
+    handle: "princesse_ataroi",
+    name: "Radiaprincesse_ataroi",
+    role: "Ambassadrice Santé & Solidarité",
+    city: "Cotonou",
+    countryCode: "BJ",
+    bio: "Créatrice de contenu engagée. Sensibilisation pour les urgences néonatales et pédiatriques. Ensemble pour sauver des vies !",
+    verified: true,
+    isLive: false,
+    followersCount: 31200,
+    followingCount: 210,
+    likesCount: 92400,
+    isFollowing: true,
+    officialDoc: "AMBASSADEUR-CERTIFIE-BJ",
+  },
+  noirdabordoff: {
+    handle: "noirdabordoff",
+    name: "Noir D'Abord",
+    role: "Collectif d'Action Solidaire",
+    city: "Cotonou",
+    countryCode: "BJ",
+    bio: "Collectif panafricain d'entraide et de secours d'urgence. Solidarité directe sans intermédiaires inutiles.",
+    verified: true,
+    isLive: false,
+    followersCount: 41800,
+    followingCount: 85,
+    likesCount: 110500,
+    isFollowing: true,
+    officialDoc: "COLLECTIF-BENIN-ENREG-2024",
+  },
+  karlchill02: {
+    handle: "karlchill02",
+    name: "Karlchill",
+    role: "Créateur Citoyen Bénin",
+    city: "Porto-Novo",
+    countryCode: "BJ",
+    bio: "Récits immersifs sur le terrain. Découverte des initiatives citoyennes et cagnottes locales vérifiées.",
+    verified: false,
+    isLive: false,
+    followersCount: 12400,
+    followingCount: 195,
+    likesCount: 34100,
+    isFollowing: false,
+    officialDoc: "CREATOR-KYC-PENDING",
+  },
+  fatima_sow: {
+    handle: "fatima_sow",
+    name: "Fatima Sow",
+    role: "Comité Parents d'Élèves",
+    city: "Thiès / Dakar",
+    countryCode: "SN",
+    bio: "Éducation et scolarisation des filles au Sénégal. Rénovation d'écoles rurales et fournitures scolaires pour tous.",
+    verified: false,
+    isLive: false,
+    followersCount: 8400,
+    followingCount: 92,
+    likesCount: 18900,
+    isFollowing: false,
+    officialDoc: "ECOLE-THIES-APE-2026",
+  },
+  dr_mensah: {
+    handle: "dr_mensah",
+    name: "Dr. Koffi Mensah",
+    role: "Pédiatre Référent Maternité",
+    city: "Lomé",
+    countryCode: "TG",
+    bio: "Pédiatre à la maternité centrale de Lomé. Combat quotidien contre la mortalité néonatale.",
+    verified: true,
+    isLive: true,
+    liveViewers: 86,
+    followersCount: 15600,
+    followingCount: 45,
+    likesCount: 41200,
+    isFollowing: false,
+    officialDoc: "ORDRE-MEDECINS-TG-748",
+  },
+  solidarite_littoral: {
+    handle: "solidarite_littoral",
+    name: "Collectif Littoral",
+    role: "Secours Citoyens Inondations",
+    city: "Douala",
+    countryCode: "CM",
+    bio: "Aide d'urgence aux familles sinistrées des inondations du Littoral camerounais. Relogement et vivres.",
+    verified: true,
+    isLive: true,
+    liveViewers: 215,
+    followersCount: 22100,
+    followingCount: 110,
+    likesCount: 67300,
+    isFollowing: true,
+    officialDoc: "SECOURS-CIVIL-LITTORAL-CM",
+  },
+};
+
+// Liste des comptes suivis / suggérés pour la barre latérale
 const SUGGESTED_ACCOUNTS = [
   { handle: "princesse_ataroi", name: "Radiaprincesse_ataroi", verified: true, role: "Ambassadrice Santé" },
   { handle: "dr_diallo", name: "Dr. Mamadou Diallo", verified: true, role: "Chirurgien CHU" },
@@ -203,7 +371,6 @@ const SUGGESTED_ACCOUNTS = [
   { handle: "arminel_benin", name: "Arminel NOUATIN", verified: true, role: "Forages Bénin" },
   { handle: "quentindavakan", name: "Quentin DAVAKAN", verified: true, role: "Super-Admin Fondateur" },
   { handle: "karlchill02", name: "Karlchill", verified: false, role: "Créateur Citoyen" },
-  { handle: "maitrevoyant43", name: "Maitre Solidaire", verified: false, role: "Bénévole Terrain" },
 ];
 
 export default function HomePage() {
@@ -226,9 +393,23 @@ export default function HomePage() {
     email?: string | null;
   } | null>(null);
 
+  // Photo de profil & Personnalisation utilisateur (avec persistence locale)
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [userBio, setUserBio] = useState<string>("Solidaire et engagé pour les causes d'urgence en Afrique de l'Ouest 🌍");
+  const [userCity, setUserCity] = useState<string>("Cotonou, Bénin");
+  const [favoritesList, setFavoritesList] = useState<string[]>([]);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
   // Modales et écrans dédiés
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showCreatorProfileModal, setShowCreatorProfileModal] = useState(false);
+  const [viewedCreator, setViewedCreator] = useState<CreatorProfile | null>(null);
+  const [showDirectMessageModal, setShowDirectMessageModal] = useState(false);
+  const [directMessageText, setDirectMessageText] = useState("");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
   const [showInboxModal, setShowInboxModal] = useState(false);
   const [showExploreModal, setShowExploreModal] = useState(false);
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
@@ -239,10 +420,18 @@ export default function HomePage() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
-  // Onglet interne de profil
-  const [profileTab, setProfileTab] = useState<"campaigns" | "donations" | "likes" | "kyc">("campaigns");
+  // Onglet interne de profil utilisateur
+  const [profileTab, setProfileTab] = useState<"videos" | "favorites" | "likes" | "donations" | "kyc">("videos");
+  // Onglet interne du profil créateur consulté
+  const [creatorTab, setCreatorTab] = useState<"videos" | "proofs" | "signatures">("videos");
 
-  // Formulaire d'authentification sécurisé (aucun mot de passe ni identifiant public)
+  // Champs de modification de profil
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editBioText, setEditBioText] = useState("");
+  const [editCityText, setEditCityText] = useState("");
+
+  // Formulaire d'authentification sécurisé
   const [authIdentifier, setAuthIdentifier] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
@@ -277,16 +466,36 @@ export default function HomePage() {
 
   const feedRef = useRef<HTMLDivElement>(null);
 
-  // Vérifier la session au démarrage
+  // Charger la session et les données persistées au démarrage
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.authenticated && data.user) {
           setCurrentUser(data.user);
+          setEditDisplayName(data.user.displayName);
+          setEditUsername(data.user.username);
         }
       })
       .catch(() => {});
+
+    if (typeof window !== "undefined") {
+      const savedAvatar = localStorage.getItem("charityy_user_avatar");
+      if (savedAvatar) setUserAvatar(savedAvatar);
+
+      const savedBio = localStorage.getItem("charityy_user_bio");
+      if (savedBio) setUserBio(savedBio);
+
+      const savedCity = localStorage.getItem("charityy_user_city");
+      if (savedCity) setUserCity(savedCity);
+
+      const savedFavs = localStorage.getItem("charityy_favorites");
+      if (savedFavs) {
+        try {
+          setFavoritesList(JSON.parse(savedFavs));
+        } catch {}
+      }
+    }
   }, []);
 
   const showNotification = (msg: string) => {
@@ -294,7 +503,105 @@ export default function HomePage() {
     setTimeout(() => setActiveToast(null), 3000);
   };
 
-  // Scroll infini (ajoute de nouveaux éléments quand on approche du bas)
+  // Chargement de la photo de profil (Avatar Upload)
+  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showNotification("⚠️ La photo ne doit pas dépasser 5 Mo.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Img = reader.result as string;
+        setUserAvatar(base64Img);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("charityy_user_avatar", base64Img);
+        }
+        showNotification("📸 Photo de profil mise à jour avec succès !");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Enregistrer les modifications du profil
+  const handleSaveProfileEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editDisplayName.trim()) return;
+
+    if (currentUser) {
+      setCurrentUser({
+        ...currentUser,
+        displayName: editDisplayName.trim(),
+        username: editUsername.trim() || currentUser.username,
+      });
+    }
+    setUserBio(editBioText.trim());
+    setUserCity(editCityText.trim());
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("charityy_user_bio", editBioText.trim());
+      localStorage.setItem("charityy_user_city", editCityText.trim());
+    }
+
+    setShowEditProfileModal(false);
+    showNotification("✅ Profil mis à jour avec succès !");
+  };
+
+  // Ouvrir le profil d'un créateur du fil ou de la barre latérale
+  const handleOpenCreatorProfile = (handle: string) => {
+    const creator = CREATORS_DIRECTORY[handle] || {
+      handle,
+      name: handle.charAt(0).toUpperCase() + handle.slice(1),
+      role: "Créateur Citoyen Solidaire",
+      city: "Cotonou, Bénin",
+      countryCode: "BJ",
+      bio: "Créateur engagé sur CHARITYY pour la transparence et l'entraide communautaire.",
+      verified: true,
+      isLive: false,
+      followersCount: 5400,
+      followingCount: 88,
+      likesCount: 14200,
+      isFollowing: false,
+      officialDoc: "REG-COMMUNITY-VAL-2026",
+    };
+
+    setViewedCreator(creator);
+    setCreatorTab("videos");
+    setShowCreatorProfileModal(true);
+  };
+
+  // Toggle follow d'un créateur
+  const handleToggleFollowCreator = (handle: string) => {
+    if (viewedCreator && viewedCreator.handle === handle) {
+      const updatedFollowing = !viewedCreator.isFollowing;
+      setViewedCreator({
+        ...viewedCreator,
+        isFollowing: updatedFollowing,
+        followersCount: updatedFollowing
+          ? viewedCreator.followersCount + 1
+          : viewedCreator.followersCount - 1,
+      });
+    }
+
+    setFeedItems((prev) =>
+      prev.map((c) => (c.handle === handle ? { ...c, isFollowing: !c.isFollowing } : c))
+    );
+
+    showNotification(`Abonnement mis à jour pour @${handle}`);
+  };
+
+  // Envoi d'un message direct à un créateur
+  const handleSendDirectMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!directMessageText.trim()) return;
+
+    showNotification(`Message direct envoyé à @${viewedCreator?.handle} !`);
+    setDirectMessageText("");
+    setShowDirectMessageModal(false);
+  };
+
+  // Scroll infini TikTok
   const handleScroll = () => {
     if (!feedRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = feedRef.current;
@@ -342,6 +649,8 @@ export default function HomePage() {
       }
 
       setCurrentUser(data.user);
+      setEditDisplayName(data.user.displayName);
+      setEditUsername(data.user.username);
       setShowAuthModal(false);
       setAuthLoading(false);
       setAuthIdentifier("");
@@ -370,12 +679,23 @@ export default function HomePage() {
     );
   };
 
-  // Follow dynamique
-  const handleToggleFollow = (handle: string) => {
+  // Favoris / Bookmark dynamique
+  const handleToggleFavorite = (campaignId: string) => {
+    setFavoritesList((prev) => {
+      const isFav = prev.includes(campaignId);
+      const updated = isFav ? prev.filter((id) => id !== campaignId) : [...prev, campaignId];
+      if (typeof window !== "undefined") {
+        localStorage.setItem("charityy_favorites", JSON.stringify(updated));
+      }
+      showNotification(isFav ? "Signet retiré des favoris." : "🔖 Ajouté à vos favoris !");
+      return updated;
+    });
+
     setFeedItems((prev) =>
-      prev.map((c) => (c.handle === handle ? { ...c, isFollowing: !c.isFollowing } : c))
+      prev.map((item) =>
+        item.id === campaignId ? { ...item, isFavorited: !item.isFavorited } : item
+      )
     );
-    showNotification(`Abonnement mis à jour pour @${handle}`);
   };
 
   // Commentaire dynamique
@@ -472,6 +792,7 @@ export default function HomePage() {
       likesCount: 1,
       commentsCount: 0,
       sharesCount: 0,
+      viewsCount: 1,
       commentsList: [],
     };
 
@@ -538,6 +859,24 @@ export default function HomePage() {
 
   const isAdmin = currentUser?.roles.some((r) => ["SUPER_ADMIN", "ADMIN", "FINANCE", "VERIFIER"].includes(r));
 
+  // Vidéos publiées par le profil créateur actuellement consulté
+  const creatorVideos = viewedCreator
+    ? feedItems.filter((c) => c.handle === viewedCreator.handle)
+    : [];
+
+  // Vidéos publiées par l'utilisateur connecté
+  const userPublishedVideos = currentUser
+    ? feedItems.filter((c) => c.handle === currentUser.username || c.authorName === currentUser.displayName)
+    : [];
+
+  // Vidéos favorites de l'utilisateur
+  const userFavoriteVideos = feedItems.filter(
+    (c) => favoritesList.includes(c.id) || c.isFavorited
+  );
+
+  // Vidéos aimées par l'utilisateur
+  const userLikedVideos = feedItems.filter((c) => c.isLiked);
+
   return (
     <div className="relative w-full min-h-screen bg-black text-white flex flex-col font-sans select-none overflow-x-hidden">
       {/* TOAST FLOTTANT */}
@@ -546,6 +885,15 @@ export default function HomePage() {
           <span>🔔</span> {activeToast}
         </div>
       )}
+
+      {/* Input caché pour l'upload de photo de profil */}
+      <input
+        type="file"
+        ref={avatarFileInputRef}
+        onChange={handleAvatarFileSelect}
+        accept="image/*"
+        className="hidden"
+      />
 
       {/* ========================================================================= */}
       {/* 1. BARRE SUPÉRIEURE TIKTOK POUR ORDINATEUR (DESKTOP NAVBAR >= 768px)       */}
@@ -635,24 +983,37 @@ export default function HomePage() {
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-neutral-850 transition"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-[#FE2C55] text-white flex items-center justify-center font-bold text-xs shadow-md border border-white/20">
-                  {currentUser.displayName.charAt(0)}
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-amber-500 to-[#FE2C55] text-white flex items-center justify-center font-bold text-xs shadow-md border border-white/20">
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser.displayName.charAt(0)
+                  )}
                 </div>
               </button>
 
               {/* Menu déroulant profil */}
               {profileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl p-2 z-50 animate-scale-in space-y-1">
-                  <div className="p-2 border-b border-neutral-800">
-                    <div className="font-bold text-xs text-white flex items-center justify-between">
-                      <span>{currentUser.displayName}</span>
-                      {isAdmin && (
-                        <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-mono font-bold">
-                          ADMIN
-                        </span>
+                  <div className="p-2 border-b border-neutral-800 flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-800 border border-neutral-700 flex items-center justify-center font-bold text-xs shrink-0">
+                      {userAvatar ? (
+                        <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        currentUser.displayName.charAt(0)
                       )}
                     </div>
-                    <div className="text-[10px] text-neutral-400 font-mono">@{currentUser.username}</div>
+                    <div className="truncate">
+                      <div className="font-bold text-xs text-white truncate flex items-center gap-1">
+                        <span>{currentUser.displayName}</span>
+                        {isAdmin && (
+                          <span className="text-[9px] bg-red-600 text-white px-1 py-0.2 rounded font-mono font-bold">
+                            ADMIN
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-neutral-400 font-mono truncate">@{currentUser.username}</div>
+                    </div>
                   </div>
 
                   <button
@@ -662,7 +1023,7 @@ export default function HomePage() {
                     }}
                     className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-200"
                   >
-                    <span>👤</span> Voir le profil
+                    <span>👤</span> Voir le profil complet
                   </button>
 
                   <button
@@ -687,6 +1048,16 @@ export default function HomePage() {
                       <span>👑</span> Console Super-Admin
                     </button>
                   )}
+
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      setShowSettingsModal(true);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-200"
+                  >
+                    <span>⚙️</span> Paramètres du compte
+                  </button>
 
                   <div className="border-t border-neutral-800 pt-1">
                     <button
@@ -800,14 +1171,14 @@ export default function HomePage() {
 
           <div className="h-px bg-neutral-800" />
 
-          {/* Section Comptes suivis / Suggérés (exactement selon votre compte TikTok) */}
+          {/* Section Comptes suivis / Suggérés (Clic = Ouvre le profil du créateur !) */}
           <div className="space-y-2">
             <div className="px-3 text-xs font-semibold text-neutral-400">Comptes suivis</div>
             <div className="space-y-1">
               {SUGGESTED_ACCOUNTS.map((acc) => (
                 <button
                   key={acc.handle}
-                  onClick={() => setSearchQuery(acc.handle)}
+                  onClick={() => handleOpenCreatorProfile(acc.handle)}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-neutral-900 text-left transition group"
                 >
                   <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold shrink-0">
@@ -932,22 +1303,26 @@ export default function HomePage() {
                 100,
                 Math.round((Number(camp.collectedMinor) / Number(camp.goalMinor)) * 100)
               );
+              const isFav = favoritesList.includes(camp.id) || camp.isFavorited;
 
               return (
                 <article
                   key={camp.uniqueKey}
                   className="w-full h-full md:h-auto snap-start snap-always relative flex flex-col justify-between overflow-hidden bg-black md:bg-neutral-950 md:rounded-2xl md:p-4 md:border md:border-neutral-850 shadow-2xl"
                 >
-                  {/* EN-TÊTE AUTEUR EN VERSION DESKTOP */}
+                  {/* EN-TÊTE AUTEUR EN VERSION DESKTOP (CLIC = OUVRE LE PROFIL DU CRÉATEUR) */}
                   <div className="hidden md:flex items-center justify-between pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-red-500 p-0.5">
+                    <div
+                      onClick={() => handleOpenCreatorProfile(camp.handle)}
+                      className="flex items-center gap-3 cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-red-500 p-0.5 transition group-hover:scale-105">
                         <div className="w-full h-full bg-black rounded-full flex items-center justify-center font-bold text-xs">
                           {camp.authorName.charAt(0)}
                         </div>
                       </div>
                       <div>
-                        <div className="flex items-center gap-1.5 font-bold text-sm text-white">
+                        <div className="flex items-center gap-1.5 font-bold text-sm text-white group-hover:text-[#25F4EE] transition">
                           <span>{camp.authorName}</span>
                           {camp.isCertified && <span className="text-sky-400 text-xs">✓</span>}
                           <span className="text-[11px] text-neutral-400 font-normal">@{camp.handle}</span>
@@ -961,7 +1336,7 @@ export default function HomePage() {
                     </div>
 
                     <button
-                      onClick={() => handleToggleFollow(camp.handle)}
+                      onClick={() => handleToggleFollowCreator(camp.handle)}
                       className={`text-xs font-bold px-4 py-1.5 rounded-md border transition ${
                         camp.isFollowing
                           ? "border-neutral-700 bg-neutral-900 text-neutral-300"
@@ -1033,13 +1408,19 @@ export default function HomePage() {
 
                       {/* COLONNE D'ACTIONS SUR MOBILE (OVERLAY À DROITE) */}
                       <div className="md:hidden absolute right-2.5 bottom-24 z-30 flex flex-col items-center gap-3.5 pointer-events-auto">
-                        {/* Avatar */}
-                        <div className="relative mb-1">
+                        {/* Avatar (Clic = Ouvre le profil du créateur !) */}
+                        <div
+                          onClick={() => handleOpenCreatorProfile(camp.handle)}
+                          className="relative mb-1 cursor-pointer"
+                        >
                           <div className="w-10 h-10 rounded-full border-2 border-white bg-neutral-800 flex items-center justify-center text-xs font-bold shadow-md">
                             {camp.authorName.charAt(0)}
                           </div>
                           <button
-                            onClick={() => handleToggleFollow(camp.handle)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleFollowCreator(camp.handle);
+                            }}
                             className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#FE2C55] text-white text-[10px] flex items-center justify-center font-bold"
                           >
                             +
@@ -1075,6 +1456,21 @@ export default function HomePage() {
                             💬
                           </div>
                           <span className="text-[10px] font-bold text-white shadow-sm">{camp.commentsCount}</span>
+                        </button>
+
+                        {/* Signets / Favoris (TikTok Bookmark) */}
+                        <button
+                          onClick={() => handleToggleFavorite(camp.id)}
+                          className="flex flex-col items-center gap-0.5"
+                        >
+                          <div
+                            className={`w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg transition ${
+                              isFav ? "text-amber-400 bg-amber-400/20" : "text-white"
+                            }`}
+                          >
+                            {isFav ? "🔖" : "🏷️"}
+                          </div>
+                          <span className="text-[10px] font-bold text-white shadow-sm">Favoris</span>
                         </button>
 
                         {/* Signatures citoyennes */}
@@ -1115,9 +1511,12 @@ export default function HomePage() {
 
                       {/* OVERLAY INFÉRIEUR (SUR LA VIDÉO FAÇON TIKTOK) */}
                       <div className="relative z-20 pb-4 px-4 pr-16 md:pr-4 bg-gradient-to-t from-black via-black/80 to-transparent pt-12 space-y-2 pointer-events-auto">
-                        {/* Auteur sur mobile */}
-                        <div className="md:hidden flex items-center gap-2">
-                          <span className="font-bold text-sm text-white">@{camp.handle}</span>
+                        {/* Auteur sur mobile (Clic = Ouvre le profil du créateur !) */}
+                        <div
+                          onClick={() => handleOpenCreatorProfile(camp.handle)}
+                          className="md:hidden flex items-center gap-2 cursor-pointer"
+                        >
+                          <span className="font-bold text-sm text-white hover:underline">@{camp.handle}</span>
                           <span className="text-[11px] text-neutral-300">• 📍 {camp.city}</span>
                         </div>
 
@@ -1178,7 +1577,7 @@ export default function HomePage() {
                     </div>
 
                     {/* COLONNE D'ACTIONS SUR ORDINATEUR (À CÔTÉ DU LECTEUR VIDÉO) */}
-                    <div className="hidden md:flex flex-col items-center gap-4 ml-4 justify-end pb-4">
+                    <div className="hidden md:flex flex-col items-center gap-3.5 ml-4 justify-end pb-4">
                       {/* Like */}
                       <button
                         onClick={() => handleLike(camp.uniqueKey || camp.id)}
@@ -1208,6 +1607,22 @@ export default function HomePage() {
                           💬
                         </div>
                         <span className="text-[11px] font-bold text-neutral-300">{camp.commentsCount}</span>
+                      </button>
+
+                      {/* Signets / Favoris (TikTok Bookmark Desktop) */}
+                      <button
+                        onClick={() => handleToggleFavorite(camp.id)}
+                        className="flex flex-col items-center gap-1 group"
+                        title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
+                      >
+                        <div
+                          className={`w-12 h-12 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 flex items-center justify-center text-lg transition shadow-md ${
+                            isFav ? "text-amber-400 bg-amber-400/20 border-amber-500/40" : "text-white"
+                          }`}
+                        >
+                          {isFav ? "🔖" : "🏷️"}
+                        </div>
+                        <span className="text-[11px] font-bold text-neutral-300">Favoris</span>
                       </button>
 
                       {/* Signatures citoyennes */}
@@ -1319,8 +1734,12 @@ export default function HomePage() {
           className="flex flex-col items-center justify-center gap-0.5 flex-1 text-neutral-500 hover:text-white"
         >
           {currentUser ? (
-            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-[#FE2C55] flex items-center justify-center text-[10px] font-bold text-white border border-white/20">
-              {currentUser.displayName.charAt(0)}
+            <div className="w-6 h-6 rounded-full overflow-hidden bg-gradient-to-tr from-amber-500 to-[#FE2C55] flex items-center justify-center text-[10px] font-bold text-white border border-white/20">
+              {userAvatar ? (
+                <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                currentUser.displayName.charAt(0)
+              )}
             </div>
           ) : (
             <span className="text-lg">👤</span>
@@ -1330,15 +1749,13 @@ export default function HomePage() {
       </nav>
 
       {/* ========================================================================= */}
-      {/* 6. MODALES ET ÉCRANS COMPLETS                                             */}
+      {/* 6. MODALE A : ÉCRAN DE PROFIL PERSONNEL TIKTOK COMPLET                    */}
       {/* ========================================================================= */}
-
-      {/* MODAL 1 : ÉCRAN DE PROFIL TIKTOK COMPLET */}
       {showProfileModal && currentUser && (
-        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 md:p-6 backdrop-blur-sm animate-fade-in">
-          <div className="bg-neutral-900 text-white w-full max-w-md rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-2 md:p-6 backdrop-blur-md animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-lg rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
             {/* Header Profil */}
-            <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/60">
+            <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/70">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-sm">{currentUser.displayName}</span>
                 {isAdmin && (
@@ -1347,34 +1764,95 @@ export default function HomePage() {
                   </span>
                 )}
               </div>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center text-sm"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSettingsModal(true)}
+                  className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-300 flex items-center justify-center text-base"
+                  title="Paramètres"
+                >
+                  ⚙️
+                </button>
+                <button
+                  onClick={() => setShowProfileModal(false)}
+                  className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center text-sm"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Corps du profil */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar">
-              {/* Avatar et identifiant */}
-              <div className="flex flex-col items-center text-center space-y-2">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#25F4EE] via-amber-500 to-[#FE2C55] p-1 shadow-xl">
-                  <div className="w-full h-full bg-neutral-900 rounded-full flex items-center justify-center text-2xl font-bold">
-                    {currentUser.displayName.charAt(0)}
+            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-5 no-scrollbar">
+              {/* Photo de profil avec bouton d'upload */}
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="relative group cursor-pointer" onClick={() => avatarFileInputRef.current?.click()}>
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#25F4EE] via-amber-500 to-[#FE2C55] p-1 shadow-2xl">
+                    <div className="w-full h-full bg-neutral-900 rounded-full overflow-hidden flex items-center justify-center text-3xl font-bold">
+                      {userAvatar ? (
+                        <img src={userAvatar} alt="Photo de profil" className="w-full h-full object-cover" />
+                      ) : (
+                        currentUser.displayName.charAt(0)
+                      )}
+                    </div>
+                  </div>
+                  {/* Badge appareil photo */}
+                  <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#FE2C55] text-white flex items-center justify-center text-xs shadow-lg border-2 border-neutral-900 group-hover:scale-110 transition">
+                    📷
                   </div>
                 </div>
+
                 <div>
-                  <h3 className="font-bold text-base flex items-center justify-center gap-1">
+                  <h3 className="font-extrabold text-base flex items-center justify-center gap-1.5">
                     <span>{currentUser.displayName}</span>
                     <span className="text-sky-400 text-xs">✓</span>
                   </h3>
                   <div className="text-xs text-neutral-400 font-mono">@{currentUser.username}</div>
+                  <div className="text-[11px] text-neutral-300 pt-1 max-w-sm mx-auto leading-relaxed">
+                    {userBio}
+                  </div>
+                  <div className="text-[10px] text-neutral-400 pt-0.5">📍 {userCity}</div>
+                </div>
+
+                {/* Boutons d'action du profil (Modifier, Partager, Portefeuille) */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setEditDisplayName(currentUser.displayName);
+                      setEditUsername(currentUser.username);
+                      setEditBioText(userBio);
+                      setEditCityText(userCity);
+                      setShowEditProfileModal(true);
+                    }}
+                    className="bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs px-4 py-2 rounded-lg border border-neutral-700 transition"
+                  >
+                    ✏️ Modifier le profil
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      avatarFileInputRef.current?.click();
+                    }}
+                    className="bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg border border-neutral-700 transition"
+                    title="Changer la photo"
+                  >
+                    📸 Photo
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(window.location.origin + "/@" + currentUser.username);
+                      showNotification("↗️ Lien de votre profil copié !");
+                    }}
+                    className="bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg border border-neutral-700 transition"
+                    title="Partager le profil"
+                  >
+                    ↗️ Partager
+                  </button>
                 </div>
               </div>
 
-              {/* Statistiques TikTok (Abonnements, Abonnés, J'aime, Dons) */}
-              <div className="flex justify-around text-center py-2 border-y border-neutral-800">
+              {/* Statistiques TikTok (Abonnements, Abonnés, J'aime, Solde) */}
+              <div className="flex justify-around text-center py-2.5 border-y border-neutral-800">
                 <div>
                   <div className="font-black text-sm text-white">42</div>
                   <div className="text-[10px] text-neutral-400">Abonnements</div>
@@ -1452,86 +1930,243 @@ export default function HomePage() {
                 </button>
               )}
 
-              {/* Onglets internes du profil */}
+              {/* ================================================================= */}
+              {/* ONGLETS DU PROFIL TIKTOK : VIDÉOS, FAVORIS, AIMÉES, DONS, KYC     */}
+              {/* ================================================================= */}
               <div className="border-t border-neutral-800 pt-3">
                 <div className="flex border-b border-neutral-800 text-xs font-bold text-neutral-400">
                   <button
-                    onClick={() => setProfileTab("campaigns")}
-                    className={`flex-1 pb-2 transition ${profileTab === "campaigns" ? "text-white border-b-2 border-white" : ""}`}
+                    onClick={() => setProfileTab("videos")}
+                    className={`flex-1 pb-2.5 flex items-center justify-center gap-1.5 transition ${
+                      profileTab === "videos" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
                   >
-                    Mes Cagnottes
+                    <span>📹</span>
+                    <span>Vidéos</span>
                   </button>
                   <button
-                    onClick={() => setProfileTab("donations")}
-                    className={`flex-1 pb-2 transition ${profileTab === "donations" ? "text-white border-b-2 border-white" : ""}`}
+                    onClick={() => setProfileTab("favorites")}
+                    className={`flex-1 pb-2.5 flex items-center justify-center gap-1.5 transition ${
+                      profileTab === "favorites" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
                   >
-                    Mes Dons
+                    <span>🔖</span>
+                    <span>Favoris ({favoritesList.length})</span>
                   </button>
                   <button
                     onClick={() => setProfileTab("likes")}
-                    className={`flex-1 pb-2 transition ${profileTab === "likes" ? "text-white border-b-2 border-white" : ""}`}
+                    className={`flex-1 pb-2.5 flex items-center justify-center gap-1.5 transition ${
+                      profileTab === "likes" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
                   >
-                    Aimées
+                    <span>❤️</span>
+                    <span>Aimées</span>
+                  </button>
+                  <button
+                    onClick={() => setProfileTab("donations")}
+                    className={`flex-1 pb-2.5 flex items-center justify-center gap-1.5 transition ${
+                      profileTab === "donations" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
+                  >
+                    <span>🧾</span>
+                    <span>Dons</span>
                   </button>
                   <button
                     onClick={() => setProfileTab("kyc")}
-                    className={`flex-1 pb-2 transition ${profileTab === "kyc" ? "text-white border-b-2 border-white" : ""}`}
+                    className={`flex-1 pb-2.5 flex items-center justify-center gap-1.5 transition ${
+                      profileTab === "kyc" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
                   >
-                    Pièces KYC
+                    <span>🛡️</span>
+                    <span>KYC</span>
                   </button>
                 </div>
 
-                <div className="pt-3 text-xs text-neutral-400">
-                  {profileTab === "campaigns" && (
-                    <div className="space-y-2">
-                      <div className="p-3 rounded-xl bg-black/40 border border-neutral-800">
-                        <div className="font-bold text-white">Forage solaire pour 3 200 écoliers à Zè</div>
-                        <div className="text-[11px] text-emerald-400 font-mono">5 620 000 / 7 500 000 XOF (75%)</div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setShowProfileModal(false);
-                          setShowCreateCampaignModal(true);
-                        }}
-                        className="w-full py-2 rounded-xl border border-dashed border-neutral-700 hover:border-white text-white font-bold text-xs"
-                      >
-                        + Lancer une nouvelle cagnotte
-                      </button>
-                    </div>
-                  )}
-
-                  {profileTab === "donations" && (
-                    <div className="space-y-2">
-                      <div className="p-2.5 rounded-xl bg-black/40 border border-neutral-800 flex justify-between items-center">
-                        <div>
-                          <div className="font-bold text-white">Chirurgie Aminata (CHU)</div>
-                          <div className="text-[10px] text-neutral-500">Reçu fiscal #REC-2026-9482</div>
+                <div className="pt-3 text-xs">
+                  {/* ONGLET 1 : VIDÉOS PUBLIÉES */}
+                  {profileTab === "videos" && (
+                    <div className="space-y-3">
+                      {userPublishedVideos.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {userPublishedVideos.map((camp) => (
+                            <div
+                              key={camp.id}
+                              onClick={() => {
+                                setSelectedCampaign(camp);
+                                setShowProfileModal(false);
+                              }}
+                              className="aspect-[3/4] rounded-xl overflow-hidden relative cursor-pointer group bg-neutral-800 border border-neutral-700/60"
+                            >
+                              <div className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient}`} />
+                              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition" />
+                              <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white flex items-center gap-1">
+                                <span>▶</span>
+                                <span>{camp.viewsCount ? `${(camp.viewsCount / 1000).toFixed(1)}k` : "1.2k"}</span>
+                              </div>
+                              <div className="absolute top-2 right-2 text-[9px] bg-black/60 px-1 rounded text-white font-mono">
+                                {camp.durationLabel}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <span className="font-bold font-mono text-emerald-400">-10 000 FCFA</span>
-                      </div>
+                      ) : (
+                        <div className="py-8 text-center space-y-3">
+                          <span className="text-3xl block">📹</span>
+                          <div className="font-bold text-white text-sm">Partagez votre première vidéo solidaire</div>
+                          <p className="text-neutral-400 text-[11px] max-w-xs mx-auto">
+                            Vos vidéos publiées apparaîtront ici et seront diffusées dans le fil d&apos;actualité TikTok de CHARITYY.
+                          </p>
+                          <button
+                            onClick={() => {
+                              setShowProfileModal(false);
+                              setShowCreateCampaignModal(true);
+                            }}
+                            className="bg-[#FE2C55] hover:bg-[#e0264b] text-white font-bold text-xs px-5 py-2 rounded-full shadow"
+                          >
+                            + Téléverser une vidéo
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
+                  {/* ONGLET 2 : FAVORIS */}
+                  {profileTab === "favorites" && (
+                    <div className="space-y-3">
+                      {userFavoriteVideos.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {userFavoriteVideos.map((camp) => (
+                            <div
+                              key={camp.id}
+                              onClick={() => {
+                                setSelectedCampaign(camp);
+                                setShowProfileModal(false);
+                              }}
+                              className="aspect-[3/4] rounded-xl overflow-hidden relative cursor-pointer group bg-neutral-800 border border-neutral-700/60"
+                            >
+                              <div className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient}`} />
+                              <div className="absolute top-2 left-2 text-xs">🔖</div>
+                              <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white flex items-center gap-1">
+                                <span>▶</span>
+                                <span>{camp.viewsCount ? `${(camp.viewsCount / 1000).toFixed(1)}k` : "2.4k"}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-8 text-center space-y-2">
+                          <span className="text-3xl block">🔖</span>
+                          <div className="font-bold text-white text-sm">Aucun signet enregistré</div>
+                          <p className="text-neutral-400 text-[11px] max-w-xs mx-auto">
+                            Cliquez sur l&apos;icône signet 🏷️ sur une vidéo du fil pour l&apos;enregistrer dans vos favoris.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ONGLET 3 : AIMÉES */}
                   {profileTab === "likes" && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2 rounded bg-black/50 border border-neutral-800 text-[11px] text-white">
-                        ❤️ Chirurgie Pédiatrique CHU
+                    <div className="space-y-3">
+                      {userLikedVideos.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {userLikedVideos.map((camp) => (
+                            <div
+                              key={camp.id}
+                              onClick={() => {
+                                setSelectedCampaign(camp);
+                                setShowProfileModal(false);
+                              }}
+                              className="aspect-[3/4] rounded-xl overflow-hidden relative cursor-pointer group bg-neutral-800 border border-neutral-700/60"
+                            >
+                              <div className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient}`} />
+                              <div className="absolute top-2 left-2 text-xs text-[#FE2C55]">❤️</div>
+                              <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white flex items-center gap-1">
+                                <span>▶</span>
+                                <span>{camp.likesCount}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-8 text-center space-y-2">
+                          <span className="text-3xl block">❤️</span>
+                          <div className="font-bold text-white text-sm">Aucune vidéo aimée</div>
+                          <p className="text-neutral-400 text-[11px] max-w-xs mx-auto">
+                            Les vidéos que vous aimez seront conservées ici en toute sécurité.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ONGLET 4 : DONS & REÇUS FISCAUX */}
+                  {profileTab === "donations" && (
+                    <div className="space-y-2.5">
+                      <div className="p-3 rounded-xl bg-black/50 border border-neutral-800 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-bold text-white text-xs">Chirurgie Aminata (CHU)</div>
+                            <div className="text-[10px] text-neutral-400 font-mono">ID: #REC-2026-XOF-9482</div>
+                          </div>
+                          <span className="font-bold font-mono text-emerald-400 text-xs">-10 000 FCFA</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-neutral-400 pt-1 border-t border-neutral-800/80">
+                          <span>Date : 13 Nov 2026 • Moneroo</span>
+                          <button
+                            onClick={() => showNotification("📄 Téléchargement du reçu fiscal PDF certifié...")}
+                            className="text-[#25F4EE] hover:underline font-bold"
+                          >
+                            Télécharger le reçu fiscal (PDF)
+                          </button>
+                        </div>
                       </div>
-                      <div className="p-2 rounded bg-black/50 border border-neutral-800 text-[11px] text-white">
-                        ❤️ Forage solaire Zè Bénin
+
+                      <div className="p-3 rounded-xl bg-black/50 border border-neutral-800 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-bold text-white text-xs">Forage Solaire Zè (Bénin)</div>
+                            <div className="text-[10px] text-neutral-400 font-mono">ID: #REC-2026-XOF-4105</div>
+                          </div>
+                          <span className="font-bold font-mono text-emerald-400 text-xs">-25 000 FCFA</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-neutral-400 pt-1 border-t border-neutral-800/80">
+                          <span>Date : 10 Nov 2026 • MTN Mobile Money</span>
+                          <button
+                            onClick={() => showNotification("📄 Téléchargement du reçu fiscal PDF certifié...")}
+                            className="text-[#25F4EE] hover:underline font-bold"
+                          >
+                            Télécharger le reçu fiscal (PDF)
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
 
+                  {/* ONGLET 5 : PIÈCES KYC */}
                   {profileTab === "kyc" && (
-                    <div className="p-3 bg-black/40 rounded-xl border border-neutral-800 space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-white font-semibold">Identité Bénin (CIP / CNI)</span>
-                        <span className="text-emerald-400 font-bold text-[10px]">✓ VALIDÉ</span>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-black/50 rounded-xl border border-neutral-800 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-semibold text-xs">Identité Bénin (CIP / CNI)</span>
+                          <span className="text-emerald-400 font-bold text-[10px] bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                            ✓ CERTIFIÉ & VÉRIFIÉ
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-400 leading-relaxed">
+                          Vos pièces d&apos;identité sont chiffrées selon la norme AES-GCM et validées par la commission d&apos;attribution.
+                        </p>
                       </div>
-                      <p className="text-[11px] text-neutral-400">
-                        Vos pièces sont vérifiées et archivées de façon chiffrée selon les normes bancaires.
-                      </p>
+
+                      <div className="p-3 bg-black/50 rounded-xl border border-neutral-800 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-semibold text-xs">Niveau de confiance</span>
+                          <span className="text-sky-400 font-bold text-[10px]">Tier 3 (Retraits illimités)</span>
+                        </div>
+                        <p className="text-[11px] text-neutral-400 leading-relaxed">
+                          Éligible aux collectes d&apos;urgences et certifications prioritaires.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1540,9 +2175,387 @@ export default function HomePage() {
               {/* Bouton de déconnexion */}
               <button
                 onClick={handleLogout}
-                className="w-full py-2.5 rounded-xl border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white text-xs font-bold"
+                className="w-full py-2.5 rounded-xl border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white text-xs font-bold transition"
               >
                 Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. MODALE B : PROFIL DU CRÉATEUR CONSULTÉ (ACCÈS DEPUIS LE FIL !)         */}
+      {/* ========================================================================= */}
+      {showCreatorProfileModal && viewedCreator && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-2 md:p-6 backdrop-blur-md animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-lg rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+            {/* Header Profil Créateur */}
+            <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/70">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm">{viewedCreator.name}</span>
+                {viewedCreator.verified && <span className="text-sky-400 text-xs">✓</span>}
+              </div>
+              <button
+                onClick={() => setShowCreatorProfileModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Corps du profil créateur */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-5 no-scrollbar">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className={`relative p-1 rounded-full ${viewedCreator.isLive ? "bg-gradient-to-tr from-[#FE2C55] to-amber-500 animate-pulse" : "bg-neutral-800"}`}>
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-900 flex items-center justify-center text-3xl font-bold border-2 border-white/20">
+                    {viewedCreator.avatarUrl ? (
+                      <img src={viewedCreator.avatarUrl} alt={viewedCreator.name} className="w-full h-full object-cover" />
+                    ) : (
+                      viewedCreator.name.charAt(0)
+                    )}
+                  </div>
+                  {viewedCreator.isLive && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-[#FE2C55] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+                      LIVE
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="font-extrabold text-base flex items-center justify-center gap-1.5">
+                    <span>{viewedCreator.name}</span>
+                    {viewedCreator.verified && <span className="text-sky-400 text-xs">✓</span>}
+                  </h3>
+                  <div className="text-xs text-neutral-400 font-mono">@{viewedCreator.handle}</div>
+                  <div className="text-[11px] text-neutral-300 font-semibold pt-0.5">{viewedCreator.role}</div>
+                  <p className="text-[11px] text-neutral-400 pt-1 max-w-sm mx-auto leading-relaxed">
+                    {viewedCreator.bio}
+                  </p>
+                  <div className="text-[10px] text-neutral-500 pt-0.5">📍 {viewedCreator.city}</div>
+                </div>
+
+                {/* Boutons d'action créateur : Suivre, Message, Partager */}
+                <div className="flex items-center gap-2 pt-1 w-full max-w-xs">
+                  <button
+                    onClick={() => handleToggleFollowCreator(viewedCreator.handle)}
+                    className={`flex-1 font-bold text-xs py-2 rounded-lg transition shadow ${
+                      viewedCreator.isFollowing
+                        ? "bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700"
+                        : "bg-[#FE2C55] hover:bg-[#e0264b] text-white"
+                    }`}
+                  >
+                    {viewedCreator.isFollowing ? "✓ Abonné" : "+ Suivre"}
+                  </button>
+
+                  <button
+                    onClick={() => setShowDirectMessageModal(true)}
+                    className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs py-2 rounded-lg border border-neutral-700 transition"
+                  >
+                    💬 Message
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(window.location.origin + "/@" + viewedCreator.handle);
+                      showNotification(`↗️ Lien du profil de @${viewedCreator.handle} copié !`);
+                    }}
+                    className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700"
+                    title="Partager le profil"
+                  >
+                    ↗️
+                  </button>
+                </div>
+
+                {viewedCreator.isLive && (
+                  <button
+                    onClick={() => {
+                      setShowCreatorProfileModal(false);
+                      setShowLiveModal(true);
+                    }}
+                    className="w-full max-w-xs bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 animate-bounce"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                    Regarder le LIVE ({viewedCreator.liveViewers} spectateurs)
+                  </button>
+                )}
+              </div>
+
+              {/* Statistiques TikTok du créateur */}
+              <div className="flex justify-around text-center py-2.5 border-y border-neutral-800">
+                <div>
+                  <div className="font-black text-sm text-white">{viewedCreator.followingCount}</div>
+                  <div className="text-[10px] text-neutral-400">Abonnements</div>
+                </div>
+                <div className="w-px bg-neutral-800" />
+                <div>
+                  <div className="font-black text-sm text-white">
+                    {viewedCreator.followersCount >= 1000
+                      ? `${(viewedCreator.followersCount / 1000).toFixed(1)}k`
+                      : viewedCreator.followersCount}
+                  </div>
+                  <div className="text-[10px] text-neutral-400">Abonnés</div>
+                </div>
+                <div className="w-px bg-neutral-800" />
+                <div>
+                  <div className="font-black text-sm text-white">
+                    {viewedCreator.likesCount >= 1000
+                      ? `${(viewedCreator.likesCount / 1000).toFixed(1)}k`
+                      : viewedCreator.likesCount}
+                  </div>
+                  <div className="text-[10px] text-neutral-400">J&apos;aime</div>
+                </div>
+              </div>
+
+              {/* Onglets du créateur : Vidéos, Preuves hospitalières, Signatures */}
+              <div className="border-t border-neutral-800 pt-3">
+                <div className="flex border-b border-neutral-800 text-xs font-bold text-neutral-400">
+                  <button
+                    onClick={() => setCreatorTab("videos")}
+                    className={`flex-1 pb-2.5 transition ${
+                      creatorTab === "videos" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
+                  >
+                    Vidéos & Causes ({creatorVideos.length})
+                  </button>
+                  <button
+                    onClick={() => setCreatorTab("proofs")}
+                    className={`flex-1 pb-2.5 transition ${
+                      creatorTab === "proofs" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
+                  >
+                    Preuves Médicales
+                  </button>
+                  <button
+                    onClick={() => setCreatorTab("signatures")}
+                    className={`flex-1 pb-2.5 transition ${
+                      creatorTab === "signatures" ? "text-white border-b-2 border-white font-extrabold" : "hover:text-neutral-300"
+                    }`}
+                  >
+                    Soutiens Citoyens
+                  </button>
+                </div>
+
+                <div className="pt-3 text-xs">
+                  {creatorTab === "videos" && (
+                    <div className="space-y-3">
+                      {creatorVideos.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {creatorVideos.map((camp) => (
+                            <div
+                              key={camp.id}
+                              onClick={() => {
+                                setSelectedCampaign(camp);
+                                setShowCreatorProfileModal(false);
+                              }}
+                              className="aspect-[3/4] rounded-xl overflow-hidden relative cursor-pointer group bg-neutral-800 border border-neutral-700/60"
+                            >
+                              <div className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient}`} />
+                              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition" />
+                              <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white flex items-center gap-1">
+                                <span>▶</span>
+                                <span>{camp.viewsCount ? `${(camp.viewsCount / 1000).toFixed(1)}k` : "1.2k"}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center text-neutral-400">
+                          Aucune vidéo supplémentaire publiée pour ce créateur.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {creatorTab === "proofs" && (
+                    <div className="p-3 bg-black/50 rounded-xl border border-neutral-800 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-white">Agrément Professionnel & CHU</span>
+                        <span className="text-emerald-400 font-bold text-[10px]">✓ VALIDÉ</span>
+                      </div>
+                      <div className="text-[11px] text-neutral-400">
+                        Référence d&apos;enregistrement : <code className="text-neutral-300">{viewedCreator.officialDoc}</code>
+                      </div>
+                      <p className="text-[11px] text-neutral-400">
+                        Chaque appel aux dons de ce praticien est soumis au contrôle du médecin référent et du service financier.
+                      </p>
+                    </div>
+                  )}
+
+                  {creatorTab === "signatures" && (
+                    <div className="p-3 bg-black/50 rounded-xl border border-neutral-800 space-y-2">
+                      <div className="font-semibold text-white">Sceau de réputation citoyenne</div>
+                      <div className="text-2xl font-black font-mono text-amber-400">98 / 100</div>
+                      <p className="text-[11px] text-neutral-400">
+                        Ce créateur bénéficie d&apos;un taux d&apos;approbation communautaire exemplaire certifié par les signatures citoyennes.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. MODALE C : MODIFIER LE PROFIL (NOM, USERNAME, BIO, VILLE)               */}
+      {/* ========================================================================= */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <h3 className="font-bold text-sm">Modifier votre profil</h3>
+              <button onClick={() => setShowEditProfileModal(false)} className="text-neutral-400 text-sm">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfileEdit} className="space-y-3 text-xs">
+              <div>
+                <label className="text-neutral-400 block mb-1 font-medium">Nom affiché :</label>
+                <input
+                  type="text"
+                  required
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-neutral-400 block mb-1 font-medium">Nom d&apos;utilisateur (@) :</label>
+                <input
+                  type="text"
+                  required
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-neutral-400 block mb-1 font-medium">Biographie :</label>
+                <textarea
+                  rows={3}
+                  value={editBioText}
+                  onChange={(e) => setEditBioText(e.target.value)}
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-neutral-400 block mb-1 font-medium">Ville / Pays :</label>
+                <input
+                  type="text"
+                  value={editCityText}
+                  onChange={(e) => setEditCityText(e.target.value)}
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditProfileModal(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-neutral-700 text-neutral-300 font-bold"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-lg bg-[#FE2C55] hover:bg-[#e0264b] text-white font-bold transition shadow"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. MODALE D : MESSAGE DIRECT À UN CRÉATEUR                                */}
+      {/* ========================================================================= */}
+      {showDirectMessageModal && viewedCreator && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">Message à {viewedCreator.name}</span>
+                <span className="text-[10px] text-neutral-400 font-mono">@{viewedCreator.handle}</span>
+              </div>
+              <button onClick={() => setShowDirectMessageModal(false)} className="text-neutral-400 text-sm">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSendDirectMessage} className="space-y-3 text-xs">
+              <p className="text-neutral-400 text-[11px]">
+                Posez une question sur la cagnotte, l&apos;avancement du projet ou les justificatifs hospitaliers.
+              </p>
+              <textarea
+                rows={4}
+                required
+                value={directMessageText}
+                onChange={(e) => setDirectMessageText(e.target.value)}
+                placeholder="Écrivez votre message solidaire..."
+                className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-white focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-lg bg-[#FE2C55] hover:bg-[#e0264b] text-white font-bold transition shadow"
+              >
+                Envoyer le message direct
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. MODALE E : PARAMÈTRES DU COMPTE (SETTINGS)                             */}
+      {/* ========================================================================= */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl text-xs">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <h3 className="font-bold text-sm">Paramètres & Confidentialité</h3>
+              <button onClick={() => setShowSettingsModal(false)} className="text-neutral-400 text-sm">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-black border border-neutral-800 space-y-1">
+                <div className="font-bold text-white">Sécurité du compte</div>
+                <p className="text-[11px] text-neutral-400">
+                  Mots de passe hachés avec PBKDF2 (600 000 itérations). Piste d&apos;audit active.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-black border border-neutral-800 space-y-1">
+                <div className="font-bold text-white">Confidentialité des dons</div>
+                <p className="text-[11px] text-neutral-400">
+                  Afficher mes dons publiquement : <strong className="text-emerald-400">Activé</strong>
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-black border border-neutral-800 space-y-1">
+                <div className="font-bold text-white">Notifications push</div>
+                <p className="text-[11px] text-neutral-400">
+                  Alertes lives & cagnottes d&apos;urgence à Cotonou : <strong className="text-[#25F4EE]">Activé</strong>
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowSettingsModal(false);
+                  showNotification("Paramètres enregistrés.");
+                }}
+                className="w-full py-2.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold"
+              >
+                Fermer
               </button>
             </div>
           </div>
