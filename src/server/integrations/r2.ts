@@ -30,6 +30,30 @@ export class R2StorageClient {
   /**
    * Génère une URL signée éphémère (60 secondes) pour la consultation d'un justificatif ou d'une pièce KYC privée.
    */
+  generatePresignedDownloadUrl(options: {
+    key: string;
+    isPrivate?: boolean;
+    expiresInSeconds?: number;
+  }): PresignedUrlResult {
+    const expiresIn = options.expiresInSeconds || PLATFORM_DEFAULTS.PRIVATE_URL_EXPIRATION_SEC;
+    const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+    const signature = crypto
+      .createHmac("sha256", process.env.DATA_ENCRYPTION_KEY || "fallback_salt")
+      .update(`${this.privateBucket}:${options.key}:${expiresAt}`)
+      .digest("hex");
+
+    const presignedUrl = `https://storage.charityy.internal/${this.privateBucket}/${options.key}?exp=${expiresAt}&sig=${signature}`;
+
+    return {
+      url: presignedUrl,
+      key: options.key,
+      expiresInSeconds: expiresIn,
+    };
+  }
+
+  /**
+   * Génère une URL signée éphémère (60 secondes) pour la consultation d'un justificatif ou d'une pièce KYC privée (version asynchrone).
+   */
   async getPresignedReadUrl(
     storageKey: string,
     expiresIn = PLATFORM_DEFAULTS.PRIVATE_URL_EXPIRATION_SEC

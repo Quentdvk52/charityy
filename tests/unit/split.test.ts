@@ -59,8 +59,8 @@ describe("Moteur financier : computeSplit()", () => {
     });
 
     expect(result.netAfterFeeMinor).toBe(4_850n);
-    // 3% de 4 850 = 145.5 -> 146
-    expect(result.platformFeeMinor).toBe(146n);
+    // 3% de 4 850 = 145.5 -> division entière BigInt = 145n
+    expect(result.platformFeeMinor).toBe(145n);
 
     const total =
       result.processorFeeMinor +

@@ -54,7 +54,9 @@ describe("Module KYC & Sécurité Documentaire (Étape 1)", () => {
     });
 
     expect(authorizedResult.success).toBe(true);
-    expect(authorizedResult.url).toContain("mock-signed-token");
+    expect(authorizedResult.url).toBeDefined();
+    expect(authorizedResult.url).toContain("sig=");
+    expect(authorizedResult.url).toContain("exp=");
   });
 
   it("permet la validation ou le rejet documenté par un vérificateur", () => {
