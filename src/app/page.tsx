@@ -39,6 +39,9 @@ interface CampaignItem {
   viewsCount: number;
   commentsList: Array<{ user: string; text: string; time: string }>;
   isFollowing?: boolean;
+  isFundraiser?: boolean;
+  videoUrl?: string;
+  proofs?: Array<{ name: string; size: string }>;
 }
 
 // Interface d'un profil de créateur ou utilisateur
@@ -219,6 +222,37 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
       { user: "Chantal M.", text: "Kits alimentaires bien distribués aux mamans ce matin.", time: "Il y a 30m" },
     ],
   },
+  {
+    id: "camp_alerte_inondation",
+    title: "Alerte Citoyenne : Pont dégradé et route coupée après les pluies",
+    handle: "citoyen_alerte",
+    story:
+      "Témoignage citoyen : le ponceau du quartier est effondré, les écoliers ne peuvent plus traverser en sécurité. Signalement public pour sécurisation d'urgence par les services de voirie.",
+    authorName: "Koffi Agbossou",
+    authorRole: "Lanceur d'Alerte Citoyen",
+    city: "Cotonou",
+    countryCode: "BJ",
+    category: "DISASTER",
+    categoryLabel: "📢 Alerte Citoyenne",
+    currency: "XOF",
+    goalMinor: 0n,
+    collectedMinor: 0n,
+    isFundraiser: false,
+    isCertified: false,
+    isUrgent: true,
+    hasLive: false,
+    bgGradient: "from-sky-950 via-neutral-900 to-black",
+    durationLabel: "0:36",
+    signaturesCount: 142,
+    likesCount: 980,
+    commentsCount: 64,
+    sharesCount: 412,
+    viewsCount: 12400,
+    commentsList: [
+      { user: "Arminel NOUATIN", text: "Situation très risquée pour les enfants le matin. Soutien total à l'alerte !", time: "Il y a 10m" },
+      { user: "Ablawa V.", text: "Partagé pour faire réagir rapidement la municipalité !", time: "Il y a 25m" },
+    ],
+  },
 ];
 
 // Base de données des profils créateurs consultables
@@ -361,6 +395,21 @@ const CREATORS_DIRECTORY: Record<string, CreatorProfile> = {
     isFollowing: true,
     officialDoc: "SECOURS-CIVIL-LITTORAL-CM",
   },
+  citoyen_alerte: {
+    handle: "citoyen_alerte",
+    name: "Koffi Agbossou",
+    role: "Lanceur d'Alerte Citoyen",
+    city: "Cotonou",
+    countryCode: "BJ",
+    bio: "Citoyen engagé pour la sécurité locale, la voirie et le signalement d'urgences collectives. Publications d'alerte et de sensibilisation.",
+    verified: false,
+    isLive: false,
+    followersCount: 1240,
+    followingCount: 38,
+    likesCount: 4500,
+    isFollowing: false,
+    officialDoc: "SIGNALEMENT-CITOYEN-VALIDATION",
+  },
 };
 
 // Liste des comptes suivis / suggérés pour la barre latérale
@@ -441,12 +490,22 @@ export default function HomePage() {
   const [userWalletBalance, setUserWalletBalance] = useState<bigint>(50000n);
   const [rechargeSuccess, setRechargeSuccess] = useState<string | null>(null);
 
-  // Création de cagnotte
+  // Création & publication vidéo (simple alerte ou cagnotte solidaire)
   const [newTitle, setNewTitle] = useState("");
+  const [isFundraiser, setIsFundraiser] = useState(false);
   const [newGoal, setNewGoal] = useState<number>(3000000);
   const [newCategory, setNewCategory] = useState<"MEDICAL" | "WATER" | "EDUCATION" | "MATERNITY" | "DISASTER">("EDUCATION");
   const [newCity, setNewCity] = useState("Cotonou, Bénin");
   const [newStory, setNewStory] = useState("");
+  const [uploadedVideoFile, setUploadedVideoFile] = useState<File | null>(null);
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null);
+  const [uploadedProofFiles, setUploadedProofFiles] = useState<Array<{ name: string; size: string }>>([]);
+  const [proofHonorCertified, setProofHonorCertified] = useState(false);
+
+  // Références d'inputs pour sélection vidéo, caméra et pièces justificatives
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const videoCameraInputRef = useRef<HTMLInputElement>(null);
+  const proofFileInputRef = useRef<HTMLInputElement>(null);
 
   // Don
   const [donationAmount, setDonationAmount] = useState<number>(10000);
@@ -755,10 +814,54 @@ export default function HomePage() {
     setTimeout(() => setRechargeSuccess(null), 4000);
   };
 
-  // Créer une nouvelle cagnotte
+  // Gestion sélection vidéo (Fichier ou Caméra directe)
+  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 200 * 1024 * 1024) {
+        showNotification("⚠️ La vidéo dépasse la taille maximale autorisée de 200 Mo.");
+        return;
+      }
+      setUploadedVideoFile(file);
+      const url = URL.createObjectURL(file);
+      setUploadedVideoUrl(url);
+      showNotification(`📹 Vidéo chargée : ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} Mo)`);
+    }
+  };
+
+  // Gestion des pièces justificatives / preuves
+  const handleProofFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles: Array<{ name: string; size: string }> = [];
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (!f) continue;
+        const sizeMb = (f.size / (1024 * 1024)).toFixed(2);
+        const sizeLabel = f.size > 1024 * 1024 ? `${sizeMb} Mo` : `${Math.round(f.size / 1024)} Ko`;
+        newFiles.push({ name: f.name, size: sizeLabel });
+      }
+      setUploadedProofFiles((prev) => [...prev, ...newFiles]);
+      showNotification(`📎 ${newFiles.length} justificatif(s) ajouté(s)`);
+    }
+  };
+
+  const handleRemoveProofFile = (index: number) => {
+    setUploadedProofFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Créer et publier une nouvelle vidéo (simple alerte ou cagnotte solidaire)
   const handleCreateCampaignSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newStory.trim()) return;
+    if (!newTitle.trim() || !newStory.trim()) {
+      showNotification("⚠️ Veuillez renseigner le titre et l'explication du sujet.");
+      return;
+    }
+
+    if (isFundraiser && (!newGoal || newGoal <= 0)) {
+      showNotification("⚠️ Veuillez spécifier un montant d'objectif valide.");
+      return;
+    }
 
     const categoryLabels: Record<string, string> = {
       MEDICAL: "🚨 Urgence Médicale",
@@ -775,18 +878,22 @@ export default function HomePage() {
       title: newTitle.trim(),
       story: newStory.trim(),
       authorName: currentUser?.displayName || "Porteur Citoyen",
-      authorRole: "Porteur Vérifié",
-      city: newCity,
+      authorRole: isFundraiser ? "Porteur de Cagnotte" : "Lanceur d'Alerte Citoyen",
+      city: newCity.trim() || "Cotonou, Bénin",
       countryCode: "BJ",
       category: newCategory,
-      categoryLabel: categoryLabels[newCategory] || "Solidarité",
+      categoryLabel: isFundraiser
+        ? (categoryLabels[newCategory] || "Solidarité")
+        : "📢 Alerte Citoyenne",
       currency: "XOF",
-      goalMinor: BigInt(newGoal),
+      goalMinor: isFundraiser ? BigInt(newGoal) : 0n,
       collectedMinor: 0n,
       isCertified: false,
-      isUrgent: newCategory === "MEDICAL" || newCategory === "DISASTER",
+      isUrgent: isFundraiser ? (newCategory === "MEDICAL" || newCategory === "DISASTER") : true,
       hasLive: false,
-      bgGradient: "from-emerald-950 via-neutral-900 to-black",
+      bgGradient: isFundraiser
+        ? "from-emerald-950 via-neutral-900 to-black"
+        : "from-sky-950 via-neutral-900 to-black",
       durationLabel: "0:45",
       signaturesCount: 1,
       likesCount: 1,
@@ -794,6 +901,9 @@ export default function HomePage() {
       sharesCount: 0,
       viewsCount: 1,
       commentsList: [],
+      isFundraiser: isFundraiser,
+      videoUrl: uploadedVideoUrl || undefined,
+      proofs: uploadedProofFiles.length > 0 ? uploadedProofFiles : undefined,
     };
 
     setFeedItems((prev) => [newCamp, ...prev]);
@@ -801,7 +911,17 @@ export default function HomePage() {
     setShowCreateCampaignModal(false);
     setNewTitle("");
     setNewStory("");
-    showNotification("🎉 Votre vidéo et cagnotte ont été publiées sur TikTok CHARITYY !");
+    setIsFundraiser(false);
+    setUploadedVideoFile(null);
+    setUploadedVideoUrl(null);
+    setUploadedProofFiles([]);
+    setProofHonorCertified(false);
+
+    showNotification(
+      isFundraiser
+        ? "🎉 Votre cagnotte solidaire et ses justificatifs ont été publiés sur CHARITYY !"
+        : "🎉 Votre vidéo d'alerte citoyenne a été publiée dans le fil TikTok !"
+    );
   };
 
   // Cadeau live Agora
@@ -1299,10 +1419,9 @@ export default function HomePage() {
             </div>
           ) : (
             filteredFeed.map((camp) => {
-              const progressPercent = Math.min(
-                100,
-                Math.round((Number(camp.collectedMinor) / Number(camp.goalMinor)) * 100)
-              );
+              const progressPercent = camp.goalMinor > 0n
+                ? Math.min(100, Math.round((Number(camp.collectedMinor) / Number(camp.goalMinor)) * 100))
+                : 0;
               const isFav = favoritesList.includes(camp.id) || camp.isFavorited;
 
               return (
@@ -1362,22 +1481,34 @@ export default function HomePage() {
                   {/* CONTENEUR VIDÉO FAÇON TIKTOK AVEC ACTIONS */}
                   <div className="relative flex-1 md:flex-initial flex items-center justify-center">
                     <div className="relative w-full md:w-[350px] lg:w-[380px] h-full md:h-[580px] bg-neutral-900 rounded-none md:rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between">
-                      {/* FOND ANIMÉ VIDÉO LÉGER (NON CHARGÉ POUR BANDE PASSANTE) */}
-                      <div
-                        onClick={() => setIsPlaying(!isPlaying)}
-                        className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient} flex items-center justify-center cursor-pointer`}
-                      >
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-black/70 opacity-90" />
-                        <div className="absolute top-16 md:top-3 right-3 text-[10px] font-mono bg-black/60 text-neutral-300 px-2 py-0.5 rounded-full border border-white/10">
-                          {camp.durationLabel} • Mode Léger
-                        </div>
-
-                        {!isPlaying && (
-                          <div className="w-16 h-16 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-2xl text-white backdrop-blur shadow-2xl animate-scale-in">
-                            ▶
+                      {/* FOND ANIMÉ VIDÉO LÉGER OU LECTEUR VIDÉO RÉEL */}
+                      {camp.videoUrl ? (
+                        <video
+                          src={camp.videoUrl}
+                          controls
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          onClick={() => setIsPlaying(!isPlaying)}
+                          className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient} flex items-center justify-center cursor-pointer`}
+                        >
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-black/70 opacity-90" />
+                          <div className="absolute top-16 md:top-3 right-3 text-[10px] font-mono bg-black/60 text-neutral-300 px-2 py-0.5 rounded-full border border-white/10">
+                            {camp.durationLabel} • Mode Léger
                           </div>
-                        )}
-                      </div>
+
+                          {!isPlaying && (
+                            <div className="w-16 h-16 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-2xl text-white backdrop-blur shadow-2xl animate-scale-in">
+                              ▶
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* BADGES HAUT SUR LA VIDÉO MOBILE */}
                       <div className="relative z-10 pt-14 md:pt-3 px-4 flex justify-between items-start pointer-events-none">
@@ -1385,11 +1516,15 @@ export default function HomePage() {
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white">
                             {camp.categoryLabel}
                           </span>
-                          {camp.isCertified && (
+                          {camp.isFundraiser === false ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/80 text-white flex items-center gap-1 shadow">
+                              📢 Alerte Citoyenne
+                            </span>
+                          ) : camp.isCertified ? (
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/80 text-white flex items-center gap-1 shadow">
                               ✓ Certifiée
                             </span>
-                          )}
+                          ) : null}
                         </div>
 
                         {camp.hasLive && (
@@ -1528,25 +1663,35 @@ export default function HomePage() {
                           </p>
                         </div>
 
-                        {/* BARRE DE PROGRESSION FINANCIÈRE */}
-                        <div className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl border border-white/15 space-y-1.5 shadow-lg">
-                          <div className="flex justify-between items-baseline text-[11px]">
-                            <div>
-                              <span className="font-extrabold text-emerald-400 font-mono text-xs">
-                                {formatCurrency(camp.collectedMinor, camp.currency)}
-                              </span>
-                              <span className="text-neutral-400"> / {formatCurrency(camp.goalMinor, camp.currency)}</span>
+                        {/* BARRE DE PROGRESSION FINANCIÈRE OU BANNIÈRE ALERTE */}
+                        {camp.isFundraiser === false ? (
+                          <div className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl border border-sky-500/30 flex items-center gap-2.5 shadow-lg">
+                            <span className="text-xl">📢</span>
+                            <div className="text-[11px] leading-tight">
+                              <span className="font-bold text-sky-300 block">Alerte & Sensibilisation Citoyenne</span>
+                              <span className="text-neutral-400 text-[10px]">Publication de signalement/problème sans collecte d&apos;argent</span>
                             </div>
-                            <span className="font-mono font-bold text-white text-[11px]">{progressPercent}%</span>
                           </div>
+                        ) : (
+                          <div className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl border border-white/15 space-y-1.5 shadow-lg">
+                            <div className="flex justify-between items-baseline text-[11px]">
+                              <div>
+                                <span className="font-extrabold text-emerald-400 font-mono text-xs">
+                                  {formatCurrency(camp.collectedMinor, camp.currency)}
+                                </span>
+                                <span className="text-neutral-400"> / {formatCurrency(camp.goalMinor, camp.currency)}</span>
+                              </div>
+                              <span className="font-mono font-bold text-white text-[11px]">{progressPercent}%</span>
+                            </div>
 
-                          <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
-                              style={{ width: `${progressPercent}%` }}
-                            />
+                            <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
+                                style={{ width: `${progressPercent}%` }}
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* GRAND BOUTON D'ACTION SOLIDAIRE */}
                         <div className="pt-0.5">
@@ -1560,6 +1705,18 @@ export default function HomePage() {
                             >
                               <span className="w-2 h-2 rounded-full bg-white animate-ping" />
                               REJOINDRE LE LIVE ({camp.liveViewers} spectateurs)
+                            </button>
+                          ) : camp.isFundraiser === false ? (
+                            <button
+                              onClick={() => {
+                                if (navigator.clipboard) {
+                                  navigator.clipboard.writeText(window.location.href);
+                                }
+                                showNotification("📢 Lien de l'alerte copié ! Merci de relayer pour sensibiliser.");
+                              }}
+                              className="w-full bg-sky-500 hover:bg-sky-400 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+                            >
+                              <span>📢</span> Relayer & Partager cette alerte
                             </button>
                           ) : (
                             <button
@@ -1997,13 +2154,33 @@ export default function HomePage() {
                               }}
                               className="aspect-[3/4] rounded-xl overflow-hidden relative cursor-pointer group bg-neutral-800 border border-neutral-700/60"
                             >
-                              <div className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient}`} />
+                              {camp.videoUrl ? (
+                                <video
+                                  src={camp.videoUrl}
+                                  muted
+                                  playsInline
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient}`} />
+                              )}
                               <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition" />
-                              <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white flex items-center gap-1">
+                              <div className="absolute top-1.5 left-1.5 z-10">
+                                {camp.isFundraiser === false ? (
+                                  <span className="text-[9px] bg-sky-500/90 text-white font-bold px-1.5 py-0.5 rounded shadow">
+                                    📢 Alerte
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] bg-emerald-600/90 text-white font-bold px-1.5 py-0.5 rounded shadow">
+                                    🤝 Cagnotte
+                                  </span>
+                                )}
+                              </div>
+                              <div className="absolute bottom-2 left-2 text-[10px] font-bold text-white flex items-center gap-1 z-10">
                                 <span>▶</span>
                                 <span>{camp.viewsCount ? `${(camp.viewsCount / 1000).toFixed(1)}k` : "1.2k"}</span>
                               </div>
-                              <div className="absolute top-2 right-2 text-[9px] bg-black/60 px-1 rounded text-white font-mono">
+                              <div className="absolute top-2 right-2 text-[9px] bg-black/60 px-1 rounded text-white font-mono z-10">
                                 {camp.durationLabel}
                               </div>
                             </div>
@@ -2368,17 +2545,44 @@ export default function HomePage() {
                   )}
 
                   {creatorTab === "proofs" && (
-                    <div className="p-3 bg-black/50 rounded-xl border border-neutral-800 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-white">Agrément Professionnel & CHU</span>
-                        <span className="text-emerald-400 font-bold text-[10px]">✓ VALIDÉ</span>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-black/50 rounded-xl border border-neutral-800 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-white">Agrément Professionnel & CHU</span>
+                          <span className="text-emerald-400 font-bold text-[10px]">✓ VALIDÉ</span>
+                        </div>
+                        <div className="text-[11px] text-neutral-400">
+                          Référence d&apos;enregistrement : <code className="text-neutral-300">{viewedCreator.officialDoc}</code>
+                        </div>
+                        <p className="text-[11px] text-neutral-400">
+                          Chaque appel aux dons de ce praticien est soumis au contrôle du médecin référent et du service financier selon la charte CHARITYY.
+                        </p>
                       </div>
-                      <div className="text-[11px] text-neutral-400">
-                        Référence d&apos;enregistrement : <code className="text-neutral-300">{viewedCreator.officialDoc}</code>
-                      </div>
-                      <p className="text-[11px] text-neutral-400">
-                        Chaque appel aux dons de ce praticien est soumis au contrôle du médecin référent et du service financier.
-                      </p>
+
+                      {/* Justificatifs et devis rattachés */}
+                      {creatorVideos.some((c) => c.proofs && c.proofs.length > 0) && (
+                        <div className="p-3 bg-black/50 rounded-xl border border-neutral-800 space-y-2">
+                          <span className="font-semibold text-white text-[11px] block">
+                            Justificatifs & devis chargés :
+                          </span>
+                          <div className="space-y-1.5">
+                            {creatorVideos
+                              .flatMap((c) => c.proofs || [])
+                              .map((proof, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between p-2 bg-neutral-900 rounded-lg border border-neutral-800 text-[11px]"
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <span>📄</span>
+                                    <span className="truncate text-neutral-200">{proof.name}</span>
+                                  </div>
+                                  <span className="text-emerald-400 font-mono text-[10px] ml-2">{proof.size}</span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -3058,96 +3262,282 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 9 : IMPORTER / CRÉER UNE CAGNOTTE (TIKTOK STUDIO) */}
+      {/* MODAL 9 : IMPORTER / PUBLIER UNE VIDÉO (TIKTOK STUDIO) */}
       {showCreateCampaignModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-neutral-900 text-white w-full max-w-md rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>
-                <h3 className="font-bold text-sm">Téléverser une vidéo solidaire</h3>
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <span>📹</span>
+                  <span>Publier une vidéo sur CHARITYY</span>
+                </h3>
                 <span className="text-[10px] text-neutral-400">Diffusion instantanée dans le fil TikTok</span>
               </div>
-              <button onClick={() => setShowCreateCampaignModal(false)} className="text-neutral-400 text-sm">
+              <button
+                onClick={() => setShowCreateCampaignModal(false)}
+                className="text-neutral-400 hover:text-white text-sm"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateCampaignSubmit} className="space-y-3 text-xs">
-              {/* Zone Drag & Drop Vidéo TikTok */}
-              <div className="border-2 border-dashed border-neutral-700 hover:border-[#FE2C55] rounded-xl p-4 text-center cursor-pointer transition bg-black/40">
-                <span className="text-2xl block mb-1">📹</span>
-                <span className="text-xs font-bold block text-white">Sélectionner une vidéo à téléverser</span>
-                <span className="text-[10px] text-neutral-400 block pt-0.5">MP4 ou WebM • 720p minimum</span>
-              </div>
+            <form onSubmit={handleCreateCampaignSubmit} className="space-y-4 text-xs">
+              {/* INPUTS FICHIER CACHÉS : FICHIER VIDÉO, CAMÉRA DIRECTE ET JUSTIFICATIFS */}
+              <input
+                ref={videoFileInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleVideoFileChange}
+              />
+              <input
+                ref={videoCameraInputRef}
+                type="file"
+                accept="video/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleVideoFileChange}
+              />
+              <input
+                ref={proofFileInputRef}
+                type="file"
+                accept=".pdf,image/*"
+                multiple
+                className="hidden"
+                onChange={handleProofFilesChange}
+              />
 
+              {/* ZONE VIDÉO (SÉLECTION OU LECTEUR DE PRÉVISUALISATION) */}
+              {uploadedVideoUrl ? (
+                <div className="relative rounded-xl overflow-hidden bg-black border border-neutral-700 space-y-0">
+                  <video
+                    src={uploadedVideoUrl}
+                    controls
+                    playsInline
+                    className="w-full h-44 object-cover bg-black"
+                  />
+                  <div className="p-2.5 bg-neutral-950 flex items-center justify-between border-t border-neutral-800">
+                    <div className="truncate text-[11px] text-neutral-300">
+                      <span className="text-emerald-400 font-semibold mr-1">✓ Vidéo prête :</span>
+                      {uploadedVideoFile?.name || "Vidéo sélectionnée"}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => videoFileInputRef.current?.click()}
+                        className="text-[10px] bg-neutral-800 hover:bg-neutral-700 text-white px-2.5 py-1 rounded transition"
+                      >
+                        Changer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadedVideoFile(null);
+                          setUploadedVideoUrl(null);
+                        }}
+                        className="text-[10px] text-red-400 hover:text-red-300 px-1 font-bold"
+                        title="Supprimer la vidéo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => videoFileInputRef.current?.click()}
+                  className="border-2 border-dashed border-neutral-700 hover:border-[#FE2C55] rounded-xl p-4 text-center cursor-pointer transition bg-black/40 space-y-2 group"
+                >
+                  <span className="text-3xl block group-hover:scale-110 transition-transform">📹</span>
+                  <div className="text-xs font-bold text-white">Sélectionner ou enregistrer une vidéo</div>
+                  <p className="text-[10px] text-neutral-400 max-w-xs mx-auto">
+                    Filmez directement depuis votre smartphone ou téléversez un fichier depuis votre galerie (MP4, WebM, MOV)
+                  </p>
+                  <div className="flex gap-2 justify-center pt-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => videoFileInputRef.current?.click()}
+                      className="bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition border border-neutral-700"
+                    >
+                      <span>📁</span> Choisir une vidéo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => videoCameraInputRef.current?.click()}
+                      className="bg-[#FE2C55] hover:bg-[#e0264b] text-white font-semibold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow"
+                    >
+                      <span>📸</span> Lancer la caméra
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TITRE ET HISTOIRE GÉNÉRALE */}
               <div>
-                <label className="font-semibold block text-neutral-300 mb-1">Titre de votre cause :</label>
+                <label className="font-semibold block text-neutral-300 mb-1">Titre de la vidéo / du sujet :</label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ex: Forage solaire pour Parakou"
-                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                  placeholder="Ex: Alerte inondation quartier Agla ou Soutien pour école"
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#FE2C55]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-semibold block text-neutral-300 mb-1">Objectif (FCFA) :</label>
-                  <input
-                    type="number"
-                    required
-                    value={newGoal}
-                    onChange={(e) => setNewGoal(Number(e.target.value))}
-                    className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 font-mono text-white focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block text-neutral-300 mb-1">Catégorie :</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full bg-black border border-neutral-700 rounded-lg px-2.5 py-2 text-white"
-                  >
-                    <option value="MEDICAL">Urgence Médicale</option>
-                    <option value="WATER">Eau & Climat</option>
-                    <option value="EDUCATION">Éducation</option>
-                    <option value="MATERNITY">Maternité</option>
-                    <option value="DISASTER">Urgence Sinistrés</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="font-semibold block text-neutral-300 mb-1">Localisation :</label>
+                <label className="font-semibold block text-neutral-300 mb-1">Localisation (Ville, quartier) :</label>
                 <input
                   type="text"
                   required
                   value={newCity}
                   onChange={(e) => setNewCity(e.target.value)}
                   placeholder="Ex: Cotonou, Bénin"
-                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#FE2C55]"
                 />
               </div>
 
               <div>
-                <label className="font-semibold block text-neutral-300 mb-1">Histoire de la cause :</label>
+                <label className="font-semibold block text-neutral-300 mb-1">
+                  Description / Explication du problème exposé :
+                </label>
                 <textarea
                   required
                   rows={3}
                   value={newStory}
                   onChange={(e) => setNewStory(e.target.value)}
-                  placeholder="Expliquez la situation, le devis hospitalier ou associatif..."
-                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                  placeholder="Expliquez la situation, le constat sur le terrain ou le témoignage citoyen..."
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#FE2C55]"
                 />
+              </div>
+
+              {/* TOGGLE : CAGNOTTE SOLIDAIRE (MOBILISATION DE FONDS) */}
+              <div className="p-3.5 rounded-xl border border-neutral-700 bg-neutral-950/80 space-y-2">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isFundraiser}
+                    onChange={(e) => setIsFundraiser(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-[#FE2C55] accent-[#FE2C55] bg-black border-neutral-700 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <span className="font-bold text-white text-xs block">
+                      🤝 Associer une cagnotte solidaire à cette vidéo (Mobilisation de fonds)
+                    </span>
+                    <span className="text-[10px] text-neutral-400 block pt-0.5">
+                      Cochez cette option si cette vidéo fait un appel aux dons financiers. Si non cochée, elle sera publiée en simple vidéo citoyenne d&apos;alerte ou de sensibilisation sans demande d&apos;argent.
+                    </span>
+                  </div>
+                </label>
+
+                {/* CHAMPS DE LA CAGNOTTE SOLIDAIRE (AFFICHÉS SI COCHÉ) */}
+                {isFundraiser && (
+                  <div className="pt-3 border-t border-neutral-800 space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="font-semibold block text-neutral-300 mb-1">Objectif (FCFA) :</label>
+                        <input
+                          type="number"
+                          required={isFundraiser}
+                          value={newGoal}
+                          onChange={(e) => setNewGoal(Number(e.target.value))}
+                          min={1000}
+                          step={1000}
+                          className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 font-mono text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold block text-neutral-300 mb-1">Catégorie :</label>
+                        <select
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value as any)}
+                          className="w-full bg-black border border-neutral-700 rounded-lg px-2.5 py-2 text-white"
+                        >
+                          <option value="MEDICAL">🚨 Urgence Médicale</option>
+                          <option value="WATER">💧 Eau & Climat</option>
+                          <option value="EDUCATION">📚 Éducation</option>
+                          <option value="MATERNITY">👶 Maternité</option>
+                          <option value="DISASTER">🚨 Urgence Sinistrés</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* SECTION PREUVES & JUSTIFICATIFS */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-neutral-300">
+                          Preuves & Justificatifs (Double Approbation) :
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => proofFileInputRef.current?.click()}
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1"
+                        >
+                          <span>📎</span> Charger des devis
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-neutral-400">
+                        Chargez les devis d&apos;hôpital, factures proforma, ordonnances ou attestations officielles (.pdf ou photos).
+                      </p>
+
+                      {uploadedProofFiles.length > 0 ? (
+                        <div className="space-y-1.5 pt-1">
+                          {uploadedProofFiles.map((proof, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between bg-black/60 px-2.5 py-1.5 rounded-lg border border-neutral-800 text-[11px]"
+                            >
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span>📄</span>
+                                <span className="truncate text-neutral-200">{proof.name}</span>
+                                <span className="text-neutral-500 text-[10px]">({proof.size})</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveProofFile(idx)}
+                                className="text-red-400 hover:text-red-300 ml-2 text-xs"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => proofFileInputRef.current?.click()}
+                          className="border border-dashed border-neutral-800 hover:border-neutral-600 rounded-lg p-2.5 text-center cursor-pointer transition bg-black/30"
+                        >
+                          <span className="text-[11px] text-neutral-400">
+                            📄 Cliquez pour charger des devis d&apos;hôpital ou factures justificatives
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* DÉCLARATION SUR L'HONNEUR */}
+                    <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        required={isFundraiser}
+                        checked={proofHonorCertified}
+                        onChange={(e) => setProofHonorCertified(e.target.checked)}
+                        className="mt-0.5 w-3.5 h-3.5 rounded text-emerald-500 accent-emerald-500 bg-black border-neutral-700"
+                      />
+                      <span className="text-[10px] text-neutral-300 leading-tight">
+                        Je certifie sur l&apos;honneur l&apos;authenticité de cette cause et des justificatifs fournis, soumis à la double approbation selon la charte CHARITYY.
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#FE2C55] hover:bg-[#e0264b] text-white py-3 rounded-xl font-bold text-xs transition shadow"
+                className="w-full bg-[#FE2C55] hover:bg-[#e0264b] text-white py-3 rounded-xl font-bold text-xs transition shadow flex items-center justify-center gap-2"
               >
-                Publier la vidéo solidaire
+                <span>🚀</span>
+                <span>{isFundraiser ? "Publier la cagnotte solidaire" : "Publier la vidéo citoyenne"}</span>
               </button>
             </form>
           </div>
