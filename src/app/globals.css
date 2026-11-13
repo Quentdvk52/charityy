@@ -41,3 +41,12 @@ body {
 button, a, input, select {
   min-height: 44px;
 }
+
+/* Masquage de la barre de défilement pour expérience TikTok fluide */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

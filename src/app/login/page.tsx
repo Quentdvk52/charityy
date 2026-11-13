@@ -171,7 +171,7 @@ export default function LoginPage() {
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Ex: yekpondafe@gmail.com ou +2290195153177"
+              placeholder="votre.email@exemple.com ou +229..."
               className="w-full bg-background border border-surface-border rounded-lg px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
             />
           </div>
@@ -220,67 +220,17 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Section Démonstration & Comptes de Test (1 clic) */}
-        <div className="pt-4 border-t border-surface-border space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-              Comptes de test (Accès 1 clic)
-            </span>
-            <span className="h-px bg-surface-border flex-1" />
-          </div>
-          <p className="text-[11px] text-neutral-500">
-            Cliquez sur un profil pour tester l&apos;application avec les différents rôles :
+        {/* Note de sécurité */}
+        <div className="p-3 bg-surface-muted rounded-xl text-[11px] text-neutral-500 border border-surface-border text-center space-y-1">
+          <p className="font-semibold text-neutral-700">Sécurité & Confidentialité de vos accès</p>
+          <p>
+            Vos mots de passe sont hachés avec PBKDF2 (600 000 itérations). Vos données financières et pièces
+            d&apos;identité sont protégées selon les normes bancaires.
           </p>
-
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("yekpondafe@gmail.com", "CharityyBoss3NAtiposy@")}
-              className="p-3 text-left border-2 border-foreground/30 rounded-xl bg-surface-muted hover:border-foreground transition group"
-            >
-              <div className="text-xs font-bold text-foreground flex items-center justify-between">
-                <span>👑 Quentin DAVAKAN</span>
-                <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.2 rounded font-mono">ADMIN</span>
-              </div>
-              <div className="text-[10px] text-neutral-500 pt-0.5">Admin Général • Tout pouvoir</div>
-              <div className="text-[9px] text-neutral-400 font-mono">yekpondafe@gmail.com</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("arminellenouation@gmail.com", "DjetoDVK21")}
-              className="p-3 text-left border-2 border-foreground/30 rounded-xl bg-surface-muted hover:border-foreground transition group"
-            >
-              <div className="text-xs font-bold text-foreground flex items-center justify-between">
-                <span>👤 Arminel NOUATIN</span>
-                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-mono">USER</span>
-              </div>
-              <div className="text-[10px] text-neutral-500 pt-0.5">Citoyen Bénin • Don & Cagnotte</div>
-              <div className="text-[9px] text-neutral-400 font-mono">arminellenouation@gmail.com</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("diallo@hospital.ci", "DialloCharityy2026!")}
-              className="p-2.5 text-left border border-surface-border rounded-lg bg-surface-muted hover:border-foreground/40 transition"
-            >
-              <div className="text-xs font-bold text-foreground">🩺 Dr. Mamadou Diallo</div>
-              <div className="text-[10px] text-neutral-500">Porteur Médical • Rôle CREATOR</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("conformite@charityy.org", "VerifierCharityy2026!")}
-              className="p-2.5 text-left border border-surface-border rounded-lg bg-surface-muted hover:border-foreground/40 transition"
-            >
-              <div className="text-xs font-bold text-foreground">🛡️ Conformité & KYC</div>
-              <div className="text-[10px] text-neutral-500">Agent Vérificateur • Rôle VERIFIER</div>
-            </button>
-          </div>
         </div>
 
         {/* Retour au fil */}
-        <div className="text-center pt-2">
+        <div className="text-center pt-1">
           <Link href="/" className="text-xs text-neutral-400 hover:text-foreground">
             ← Retourner au fil vidéo sans se connecter
           </Link>

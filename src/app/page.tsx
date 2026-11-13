@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { computeSplit } from "@/modules/payments/split";
 import { computeSignatureProgress } from "@/modules/signatures/service";
 import { formatCurrency } from "@/lib/currency";
 import { DEFAULT_GIFT_CATALOG, processGiftTransaction } from "@/modules/lives/service";
 
-// Interface des campagnes du fil solidaire
+// Interface des publications vidéo courtes & cagnottes du fil TikTok
 interface CampaignItem {
   id: string;
+  uniqueKey?: string;
+  handle: string;
   title: string;
   story: string;
   authorName: string;
@@ -27,26 +29,29 @@ interface CampaignItem {
   liveHostName?: string;
   liveViewers?: number;
   bgGradient: string;
+  durationLabel: string;
   signaturesCount: number;
   likesCount: number;
+  isLiked?: boolean;
   commentsCount: number;
   sharesCount: number;
   commentsList: Array<{ user: string; text: string; time: string }>;
 }
 
-// Données de test enrichies : causes représentatives pour scroller et tester
-const INITIAL_CAMPAIGNS: CampaignItem[] = [
+// Données initiales pour le fil vidéo court
+const BASE_CAMPAIGNS: CampaignItem[] = [
   {
     id: "camp_urgence_diallo",
+    handle: "dr_diallo",
     title: "Urgence vitale : Chirurgie pédiatrique à cœur ouvert pour Aminata",
     story:
-      "Aminata, 6 ans, souffre d'une cardiopathie congénitale sévère. L'intervention chirurgicale d'urgence au CHU est programmée dès mobilisation du devis vérifié.",
+      "Aminata, 6 ans, a besoin d'une intervention chirurgicale immédiate au CHU. Devis médical et pièces cliniques certifiés.",
     authorName: "Dr. Mamadou Diallo",
-    authorRole: "Chirurgien pédiatrique (Personne Ressource Vérifiée)",
+    authorRole: "Chirurgien pédiatrique",
     city: "Abidjan",
     countryCode: "CI",
     category: "MEDICAL",
-    categoryLabel: "Urgence Médicale",
+    categoryLabel: "🚨 Urgence Médicale",
     currency: "XOF",
     goalMinor: 5_000_000n,
     collectedMinor: 3_850_000n,
@@ -55,7 +60,8 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
     hasLive: true,
     liveHostName: "Dr. Mamadou Diallo",
     liveViewers: 142,
-    bgGradient: "from-red-950/80 via-neutral-900 to-black",
+    bgGradient: "from-red-950 via-neutral-900 to-black",
+    durationLabel: "0:48",
     signaturesCount: 92,
     likesCount: 2480,
     commentsCount: 184,
@@ -68,49 +74,53 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
   },
   {
     id: "camp_eau_benin",
-    title: "Accès à l'eau potable : Château d'eau solaire pour 3 200 écoliers et villageois",
+    handle: "arminel_benin",
+    title: "Accès eau potable : Forage solaire pour 3 200 écoliers à Zè",
     story:
-      "Les enfants de l'école primaire de Djigbé à Zè (Bénin) parcourent 4 km par jour pour puiser de l'eau insalubre. Ce forage solaire automatisé approvisionnera l'école et le dispensaire.",
-    authorName: "Arminel NOUATIN & Eau et Vie Bénin",
-    authorRole: "Coordination Citoyenne (Conformité certifiée)",
+      "Les enfants parcourent 4 km par jour pour trouver de l'eau. Ce château d'eau solaire alimentera l'école et le dispensaire.",
+    authorName: "Arminel NOUATIN",
+    authorRole: "Coordination Citoyenne",
     city: "Zè / Cotonou",
     countryCode: "BJ",
     category: "WATER",
-    categoryLabel: "Eau & Climat",
+    categoryLabel: "💧 Eau & Climat",
     currency: "XOF",
     goalMinor: 7_500_000n,
     collectedMinor: 5_620_000n,
     isCertified: true,
     isUrgent: false,
     hasLive: false,
-    bgGradient: "from-cyan-950/80 via-neutral-900 to-black",
+    bgGradient: "from-cyan-950 via-neutral-900 to-black",
+    durationLabel: "1:15",
     signaturesCount: 100,
     likesCount: 1920,
     commentsCount: 96,
     sharesCount: 410,
     commentsList: [
-      { user: "Quentin DAVAKAN", text: "Dossier vérifié et validé par l'administration générale.", time: "Il y a 10m" },
+      { user: "Quentin DAVAKAN", text: "Projet exemplaire et vérifié. Bravo pour l'engagement terrain !", time: "Il y a 10m" },
       { user: "Sœur Jeanne", text: "Le dispensaire de Zè attend ce raccordement avec impatience.", time: "Il y a 2h" },
     ],
   },
   {
     id: "camp_ecole_senegal",
-    title: "Éducation rurale : Reconstruction de 3 salles de classe détruites par les intempéries",
+    handle: "fatima_sow",
+    title: "Éducation : Reconstruction de 3 salles de classe détruites",
     story:
-      "Suite aux tornades à Thiès, 140 écoliers étudient sous des bâches de fortune. Le projet finance toitures en bacs alu, tables-bancs neufs et sanitaires séparés.",
+      "Suite aux intempéries, 140 écoliers étudient sous des bâches. Financement de toitures en alu et tables-bancs neufs.",
     authorName: "Fatima Sow",
-    authorRole: "Présidente Comité Parents d'Élèves (Porteuse Citoyenne)",
+    authorRole: "Comité Parents d'Élèves",
     city: "Thiès / Dakar",
     countryCode: "SN",
     category: "EDUCATION",
-    categoryLabel: "Éducation & Jeunesse",
+    categoryLabel: "📚 Éducation",
     currency: "XOF",
     goalMinor: 3_200_000n,
     collectedMinor: 1_650_000n,
     isCertified: false,
     isUrgent: false,
     hasLive: false,
-    bgGradient: "from-amber-950/70 via-neutral-900 to-black",
+    bgGradient: "from-amber-950 via-neutral-900 to-black",
+    durationLabel: "0:56",
     signaturesCount: 64,
     likesCount: 940,
     commentsCount: 48,
@@ -122,15 +132,16 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
   },
   {
     id: "camp_maternite_togo",
-    title: "Santé Maternelle : 2 couveuses néonatales pour réduire la mortalité prématurée",
+    handle: "dr_mensah",
+    title: "Santé Maternelle : 2 couveuses pour les bébés prématurés",
     story:
-      "La maternité de district accueille 90 naissances par mois mais manque cruellement de couveuses pour les bébés prématurés. Matériel médical sourcé chez un fournisseur agréé.",
+      "La maternité manque de couveuses vitales. Réduisons ensemble la mortalité néonatale avec du matériel aux normes.",
     authorName: "Dr. Koffi Mensah",
-    authorRole: "Pédiatre Référent (Praticien Habilité)",
+    authorRole: "Pédiatre Référent",
     city: "Lomé",
     countryCode: "TG",
     category: "MATERNITY",
-    categoryLabel: "Maternité & Nourrissons",
+    categoryLabel: "👶 Maternité",
     currency: "XOF",
     goalMinor: 4_200_000n,
     collectedMinor: 2_950_000n,
@@ -139,7 +150,8 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
     hasLive: true,
     liveHostName: "Dr. Koffi Mensah",
     liveViewers: 86,
-    bgGradient: "from-purple-950/80 via-neutral-900 to-black",
+    bgGradient: "from-purple-950 via-neutral-900 to-black",
+    durationLabel: "1:02",
     signaturesCount: 88,
     likesCount: 1540,
     commentsCount: 82,
@@ -151,15 +163,16 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
   },
   {
     id: "camp_sinistres_cameroun",
-    title: "Urgence Sinistrés : Secours alimentaire et relogement pour 45 familles inondées",
+    title: "Urgence Sinistrés : Secours et relogement pour 45 familles inondées",
+    handle: "solidarite_littoral",
     story:
-      "Après la montée des eaux dans le quartier Makèpè, 45 familles ont perdu leurs logements et vivres. Distribution de kits d'urgence, nattes et abris temporaires.",
-    authorName: "Collectif Solidarité Littoral",
-    authorRole: "Coordination de secours citoyens (Vérifiée)",
+      "Distribution de kits d'urgence, vivres et abris temporaires après les inondations du quartier Makèpè.",
+    authorName: "Collectif Littoral",
+    authorRole: "Secours Citoyens",
     city: "Douala",
     countryCode: "CM",
     category: "DISASTER",
-    categoryLabel: "Urgence Sinistrés",
+    categoryLabel: "🚨 Urgence Sinistrés",
     currency: "XOF",
     goalMinor: 6_000_000n,
     collectedMinor: 4_900_000n,
@@ -168,7 +181,8 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
     hasLive: true,
     liveHostName: "Collectif Littoral",
     liveViewers: 215,
-    bgGradient: "from-orange-950/80 via-neutral-900 to-black",
+    bgGradient: "from-orange-950 via-neutral-900 to-black",
+    durationLabel: "0:42",
     signaturesCount: 98,
     likesCount: 3120,
     commentsCount: 210,
@@ -182,8 +196,13 @@ const INITIAL_CAMPAIGNS: CampaignItem[] = [
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"for_you" | "local" | "urgencies" | "lives">("for_you");
-  const [campaigns, setCampaigns] = useState<CampaignItem[]>(INITIAL_CAMPAIGNS);
-  const [selectedCampaign, setSelectedCampaign] = useState<CampaignItem>(INITIAL_CAMPAIGNS[0]!);
+  const [feedItems, setFeedItems] = useState<CampaignItem[]>(() =>
+    BASE_CAMPAIGNS.map((item, idx) => ({ ...item, uniqueKey: `${item.id}_${idx}` }))
+  );
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignItem>(BASE_CAMPAIGNS[0]!);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [activeToast, setActiveToast] = useState<string | null>(null);
 
   // État utilisateur connecté
   const [currentUser, setCurrentUser] = useState<{
@@ -192,7 +211,6 @@ export default function HomePage() {
     username: string;
     roles: string[];
     email?: string | null;
-    phone?: string | null;
   } | null>(null);
 
   // Modales
@@ -205,17 +223,17 @@ export default function HomePage() {
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
 
-  // Formulaire auth modal
+  // Formulaire d'authentification sécurisé (aucun mot de passe ni identifiant public)
   const [authIdentifier, setAuthIdentifier] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Wallet utilisateur connecté
-  const [userWalletBalance, setUserWalletBalance] = useState<bigint>(50000n); // 50 000 FCFA
+  // Portefeuille utilisateur
+  const [userWalletBalance, setUserWalletBalance] = useState<bigint>(50000n);
   const [rechargeSuccess, setRechargeSuccess] = useState<string | null>(null);
 
-  // Formulaire création cagnotte
+  // Création de cagnotte
   const [newTitle, setNewTitle] = useState("");
   const [newGoal, setNewGoal] = useState<number>(3000000);
   const [newCategory, setNewCategory] = useState<"MEDICAL" | "WATER" | "EDUCATION" | "MATERNITY" | "DISASTER">("EDUCATION");
@@ -227,10 +245,10 @@ export default function HomePage() {
   const [selectedMethod, setSelectedMethod] = useState<"mobile_money" | "card">("mobile_money");
   const [donationSuccess, setDonationSuccess] = useState(false);
 
-  // Live
+  // Live & Cadeaux
   const [chatMessages, setChatMessages] = useState<string[]>([
     "Bienvenue dans le direct solidaire.",
-    "Merci à tous les signataires et donateurs !",
+    "Merci à tous les donateurs et signataires !",
   ]);
   const [liveChatInput, setLiveChatInput] = useState("");
   const [activeGiftAnimation, setActiveGiftAnimation] = useState<string | null>(null);
@@ -238,7 +256,9 @@ export default function HomePage() {
   // Commentaires
   const [newCommentInput, setNewCommentInput] = useState("");
 
-  // Vérifier la session utilisateur au chargement
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  // Vérifier la session au démarrage
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
@@ -250,28 +270,47 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  const showNotification = (msg: string) => {
+    setActiveToast(msg);
+    setTimeout(() => setActiveToast(null), 3000);
+  };
+
+  // Scroll infini (ajoute de nouveaux éléments quand on approche du bas)
+  const handleScroll = () => {
+    if (!feedRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = feedRef.current;
+    if (scrollTop + clientHeight >= scrollHeight - 300) {
+      // Duplication et génération infinie continue façon TikTok
+      setFeedItems((prev) => {
+        const nextBatch = BASE_CAMPAIGNS.map((c, i) => ({
+          ...c,
+          uniqueKey: `${c.id}_gen_${Date.now()}_${i}`,
+        }));
+        return [...prev, ...nextBatch];
+      });
+    }
+  };
+
   // Déconnexion
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       setCurrentUser(null);
+      showNotification("Vous êtes déconnecté.");
     } catch {}
   };
 
-  // Connexion rapide via la modal
-  const handleLoginSubmit = async (e?: React.FormEvent, directId?: string, directPass?: string) => {
-    if (e) e.preventDefault();
+  // Connexion sécurisée
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setAuthError(null);
     setAuthLoading(true);
-
-    const idToUse = directId || authIdentifier;
-    const passToUse = directPass || authPassword;
 
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: idToUse, password: passToUse }),
+        body: JSON.stringify({ identifier: authIdentifier, password: authPassword }),
       });
 
       const data = await res.json();
@@ -286,84 +325,43 @@ export default function HomePage() {
       setAuthLoading(false);
       setAuthIdentifier("");
       setAuthPassword("");
+      showNotification(`Bienvenue, ${data.user.displayName} !`);
     } catch {
       setAuthError("Erreur réseau lors de la connexion.");
       setAuthLoading(false);
     }
   };
 
-  // Recharge du portefeuille
-  const handleRechargeWallet = (amount: number, providerName: string) => {
-    setUserWalletBalance((prev) => prev + BigInt(amount));
-    setRechargeSuccess(`Recharge de ${amount.toLocaleString()} FCFA via ${providerName} effectuée avec succès !`);
-    setTimeout(() => setRechargeSuccess(null), 4000);
-  };
-
-  // Création d'une nouvelle cagnotte
-  const handleCreateCampaignSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newStory.trim()) return;
-
-    const categoryLabels: Record<string, string> = {
-      MEDICAL: "Urgence Médicale",
-      WATER: "Eau & Climat",
-      EDUCATION: "Éducation & Jeunesse",
-      MATERNITY: "Maternité & Nourrissons",
-      DISASTER: "Urgence Sinistrés",
-    };
-
-    const newCamp: CampaignItem = {
-      id: `camp_${Date.now()}`,
-      title: newTitle.trim(),
-      story: newStory.trim(),
-      authorName: currentUser?.displayName || "Arminel NOUATIN",
-      authorRole: "Porteur Citoyen Vérifié",
-      city: newCity,
-      countryCode: "BJ",
-      category: newCategory,
-      categoryLabel: categoryLabels[newCategory] || "Solidarité",
-      currency: "XOF",
-      goalMinor: BigInt(newGoal),
-      collectedMinor: 0n,
-      isCertified: false,
-      isUrgent: newCategory === "MEDICAL" || newCategory === "DISASTER",
-      hasLive: false,
-      bgGradient: "from-emerald-950/80 via-neutral-900 to-black",
-      signaturesCount: 1,
-      likesCount: 1,
-      commentsCount: 0,
-      sharesCount: 0,
-      commentsList: [],
-    };
-
-    setCampaigns((prev) => [newCamp, ...prev]);
-    setSelectedCampaign(newCamp);
-    setShowCreateCampaignModal(false);
-    setNewTitle("");
-    setNewStory("");
-    alert("🎉 Votre cagnotte solidaire a été créée avec succès ! Elle est désormais visible dans le fil public.");
-  };
-
-  // Likes en temps réel
-  const handleToggleLike = (campaignId: string) => {
-    setCampaigns((prev) =>
-      prev.map((c) => (c.id === campaignId ? { ...c, likesCount: c.likesCount + 1 } : c))
+  // Like dynamique
+  const handleLike = (uniqueKey: string) => {
+    setFeedItems((prev) =>
+      prev.map((item) => {
+        if (item.uniqueKey === uniqueKey) {
+          const isLiked = !item.isLiked;
+          return {
+            ...item,
+            isLiked,
+            likesCount: isLiked ? item.likesCount + 1 : item.likesCount - 1,
+          };
+        }
+        return item;
+      })
     );
   };
 
-  // Commentaires en direct
+  // Commentaire dynamique
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCommentInput.trim()) return;
 
-    const authorName = currentUser?.displayName || "Arminel NOUATIN";
+    const authorName = currentUser?.displayName || "Citoyen Solidaire";
     const newEntry = {
       user: authorName,
       text: newCommentInput.trim(),
       time: "À l'instant",
     };
 
-    setCampaigns((prev) =>
+    setFeedItems((prev) =>
       prev.map((c) =>
         c.id === selectedCampaign.id
           ? {
@@ -384,9 +382,9 @@ export default function HomePage() {
     setNewCommentInput("");
   };
 
-  // Signer une cause
+  // Signer
   const handleSignCampaign = () => {
-    setCampaigns((prev) =>
+    setFeedItems((prev) =>
       prev.map((c) =>
         c.id === selectedCampaign.id && c.signaturesCount < 100
           ? { ...c, signaturesCount: c.signaturesCount + 1 }
@@ -398,38 +396,68 @@ export default function HomePage() {
       signaturesCount: Math.min(100, prev.signaturesCount + 1),
     }));
     setShowSignatureModal(false);
-    alert("Signature enregistrée avec succès ! Merci pour votre engagement civique.");
+    showNotification("✍️ Signature citoyenne enregistrée avec succès !");
   };
 
-  // Filtrage selon l'onglet
-  const filteredCampaigns = campaigns.filter((c) => {
-    if (activeTab === "urgencies") return c.isUrgent;
-    if (activeTab === "lives") return c.hasLive;
-    if (activeTab === "local") return c.city.includes("Abidjan") || c.city.includes("Bénin") || c.city.includes("Cotonou");
-    return true;
-  });
+  // Recharger le portefeuille
+  const handleRechargeWallet = (amount: number, providerName: string) => {
+    setUserWalletBalance((prev) => prev + BigInt(amount));
+    setRechargeSuccess(`+${amount.toLocaleString()} FCFA crédités via ${providerName} !`);
+    setTimeout(() => setRechargeSuccess(null), 4000);
+  };
 
-  // Split financier dynamique
-  const splitBreakdown = computeSplit({
-    grossAmountMinor: BigInt(donationAmount),
-    processorFeeMinor: BigInt(Math.round(donationAmount * 0.025)),
-    hasEligibleCreator: true,
-  });
+  // Créer une nouvelle cagnotte
+  const handleCreateCampaignSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newStory.trim()) return;
 
-  // Calcul progression signatures
-  const signatureProgress = computeSignatureProgress(
-    Array.from({ length: selectedCampaign.signaturesCount }, (_, i) => ({
-      id: `sig_${i}`,
-      campaignId: selectedCampaign.id,
-      signerId: `usr_${i}`,
-      kind: (i < 40 ? "RELATIVE" : i < 70 ? "RESOURCE_PERSON" : "COMMUNITY") as any,
-      createdAt: new Date(),
-    }))
-  );
+    const categoryLabels: Record<string, string> = {
+      MEDICAL: "🚨 Urgence Médicale",
+      WATER: "💧 Eau & Climat",
+      EDUCATION: "📚 Éducation",
+      MATERNITY: "👶 Maternité",
+      DISASTER: "🚨 Urgence Sinistrés",
+    };
 
+    const newCamp: CampaignItem = {
+      id: `camp_${Date.now()}`,
+      uniqueKey: `camp_${Date.now()}_new`,
+      handle: currentUser?.username || "citoyen_benin",
+      title: newTitle.trim(),
+      story: newStory.trim(),
+      authorName: currentUser?.displayName || "Porteur Citoyen",
+      authorRole: "Porteur Vérifié",
+      city: newCity,
+      countryCode: "BJ",
+      category: newCategory,
+      categoryLabel: categoryLabels[newCategory] || "Solidarité",
+      currency: "XOF",
+      goalMinor: BigInt(newGoal),
+      collectedMinor: 0n,
+      isCertified: false,
+      isUrgent: newCategory === "MEDICAL" || newCategory === "DISASTER",
+      hasLive: false,
+      bgGradient: "from-emerald-950 via-neutral-900 to-black",
+      durationLabel: "0:45",
+      signaturesCount: 1,
+      likesCount: 1,
+      commentsCount: 0,
+      sharesCount: 0,
+      commentsList: [],
+    };
+
+    setFeedItems((prev) => [newCamp, ...prev]);
+    setSelectedCampaign(newCamp);
+    setShowCreateCampaignModal(false);
+    setNewTitle("");
+    setNewStory("");
+    showNotification("🎉 Votre cagnotte a été publiée dans le fil TikTok !");
+  };
+
+  // Envoyer un cadeau en direct
   const handleSendGift = (giftId: string) => {
     const result = processGiftTransaction({
-      senderId: currentUser?.id || "usr_arminel_nouatin",
+      senderId: currentUser?.id || "usr_guest",
       receiverId: "creator_diallo",
       giftId,
       senderWalletBalanceMinor: userWalletBalance,
@@ -437,7 +465,7 @@ export default function HomePage() {
 
     if (result.success) {
       setUserWalletBalance(result.newSenderBalanceMinor);
-      setActiveGiftAnimation(`Cadeau offert : ${result.gift.name} (-${result.gift.priceMinor} XOF)`);
+      setActiveGiftAnimation(`🎁 ${result.gift.name} offert (-${result.gift.priceMinor} XOF)`);
       setChatMessages((prev) => [
         ...prev,
         `🎁 ${currentUser?.displayName || "Vous"} a offert un ${result.gift.name}.`,
@@ -448,6 +476,7 @@ export default function HomePage() {
     }
   };
 
+  // Message chat en direct
   const handleSendChatMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!liveChatInput.trim()) return;
@@ -455,197 +484,140 @@ export default function HomePage() {
     setLiveChatInput("");
   };
 
+  // Filtrage par onglet
+  const filteredFeed = feedItems.filter((c) => {
+    if (activeTab === "urgencies") return c.isUrgent;
+    if (activeTab === "lives") return c.hasLive;
+    if (activeTab === "local") return c.city.includes("Abidjan") || c.city.includes("Bénin") || c.city.includes("Cotonou");
+    return true;
+  });
+
+  const splitBreakdown = computeSplit({
+    grossAmountMinor: BigInt(donationAmount),
+    processorFeeMinor: BigInt(Math.round(donationAmount * 0.025)),
+    hasEligibleCreator: true,
+  });
+
+  const signatureProgress = computeSignatureProgress(
+    Array.from({ length: selectedCampaign.signaturesCount }, (_, i) => ({
+      id: `sig_${i}`,
+      campaignId: selectedCampaign.id,
+      signerId: `usr_${i}`,
+      kind: (i < 40 ? "RELATIVE" : i < 70 ? "RESOURCE_PERSON" : "COMMUNITY") as any,
+      createdAt: new Date(),
+    }))
+  );
+
   const isAdmin = currentUser?.roles.some((r) => ["SUPER_ADMIN", "ADMIN", "FINANCE", "VERIFIER"].includes(r));
 
   return (
-    <div className="flex-1 flex flex-col max-w-lg mx-auto w-full border-x border-surface-border min-h-screen bg-background">
-      {/* 1. BARRE SUPÉRIEURE AVEC AUTHENTIFICATION DYNAMIQUE */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-surface-border px-4 py-2.5 flex items-center justify-between">
-        <div>
-          <Link href="/" className="font-extrabold tracking-tight text-lg block leading-none">
-            CHARITYY
-          </Link>
-          <span className="text-[10px] text-neutral-500 font-medium">Monde Meilleure • Solidarité Vérifiée</span>
+    <div className="relative w-full h-[100dvh] max-w-md mx-auto bg-black text-white overflow-hidden flex flex-col select-none shadow-2xl">
+      {/* TOAST FLOTTANT */}
+      {activeToast && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-white/90 text-black text-xs font-bold px-4 py-2 rounded-full shadow-lg backdrop-blur animate-fade-in">
+          {activeToast}
+        </div>
+      )}
+
+      {/* 1. EN-TÊTE TRANSPARENT FLOTTANT SUR LA VIDÉO FAÇON TIKTOK */}
+      <header className="absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 via-black/40 to-transparent px-3 py-2.5 flex items-center justify-between pointer-events-auto">
+        <div className="flex items-center gap-1.5">
+          <span className="font-extrabold tracking-tighter text-base text-white">CHARITYY</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* ONGLETS FLOTTANTS CENTRAUX */}
+        <nav className="flex items-center gap-3 text-xs font-bold">
+          <button
+            onClick={() => setActiveTab("for_you")}
+            className={`transition ${activeTab === "for_you" ? "text-white border-b-2 border-white pb-0.5" : "text-neutral-400 hover:text-white"}`}
+          >
+            Pour toi
+          </button>
+          <button
+            onClick={() => setActiveTab("local")}
+            className={`transition ${activeTab === "local" ? "text-white border-b-2 border-white pb-0.5" : "text-neutral-400 hover:text-white"}`}
+          >
+            Local
+          </button>
+          <button
+            onClick={() => setActiveTab("urgencies")}
+            className={`transition ${activeTab === "urgencies" ? "text-red-400 border-b-2 border-red-500 pb-0.5 font-extrabold" : "text-neutral-400 hover:text-white"}`}
+          >
+            Urgences
+          </button>
+          <button
+            onClick={() => setActiveTab("lives")}
+            className={`transition ${activeTab === "lives" ? "text-red-500 border-b-2 border-red-500 pb-0.5 font-extrabold flex items-center gap-1" : "text-neutral-400 hover:text-white"}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            Lives
+          </button>
+        </nav>
+
+        {/* ACCÈS COMPTE / ESPACE CONNECTÉ */}
+        <div>
           {currentUser ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => (isAdmin ? setShowAdminModal(true) : setShowUserSpaceModal(true))}
-                className="text-right hover:opacity-80 transition"
-              >
-                <span className="text-xs font-bold block text-foreground leading-tight">
-                  {currentUser.displayName}
-                </span>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
-                  isAdmin ? "bg-red-600 text-white" : "bg-emerald-600 text-white"
-                }`}>
-                  {isAdmin ? "ADMIN GÉNÉRAL" : "ESPACE CITOYEN"}
-                </span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="text-[11px] border border-surface-border px-2 py-1 rounded text-neutral-500 hover:text-foreground hover:bg-surface-muted transition"
-                title="Déconnexion"
-              >
-                Déconnexion
-              </button>
-            </div>
+            <button
+              onClick={() => (isAdmin ? setShowAdminModal(true) : setShowUserSpaceModal(true))}
+              className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow backdrop-blur transition ${
+                isAdmin ? "bg-red-600/90 hover:bg-red-600 text-white" : "bg-emerald-600/90 hover:bg-emerald-600 text-white"
+              }`}
+            >
+              <span>{isAdmin ? "👑 Admin" : "👤 Espace"}</span>
+            </button>
           ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="text-xs bg-foreground text-background font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition shadow-sm"
-              >
-                Se connecter
-              </button>
-              <Link
-                href="/login"
-                className="text-xs border border-surface-border px-2.5 py-1.5 rounded-full text-neutral-600 hover:text-foreground"
-              >
-                Page Auth
-              </Link>
-            </div>
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="text-[11px] font-bold bg-white text-black px-3 py-1 rounded-full hover:bg-neutral-200 transition shadow"
+            >
+              Connexion
+            </button>
           )}
         </div>
       </header>
 
-      {/* 2. ONGLETS DE NAVIGATION DYNAMIQUE */}
-      <nav className="flex border-b border-surface-border text-xs font-semibold sticky top-[57px] z-30 bg-background">
-        {[
-          { key: "for_you", label: "Pour toi (Tous)" },
-          { key: "local", label: "Local (Bénin & CI)" },
-          { key: "urgencies", label: "Urgences 🚨" },
-          { key: "lives", label: "Directs 🔴" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={`flex-1 py-2.5 text-center border-b-2 transition-all ${
-              activeTab === tab.key
-                ? "border-foreground text-foreground font-bold"
-                : "border-transparent text-neutral-400 hover:text-neutral-600"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* 3. FLUX DÉFILABLE DE VIDÉOS & CAGNOTTES (SCROLL VERTICAL) */}
-      <main className="flex-1 p-3 space-y-4">
-        {/* BANDEAU ESPACE CONNECTÉ SPÉCIALISÉ */}
-        {currentUser && isAdmin && (
-          <div className="bg-gradient-to-r from-red-950/70 to-neutral-900 border border-red-500/30 rounded-2xl p-3.5 space-y-2.5 shadow-md">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-red-600 text-white font-bold flex items-center justify-center text-xs shadow">
-                  👑
-                </span>
-                <div>
-                  <div className="font-bold text-xs text-white flex items-center gap-1.5">
-                    {currentUser.displayName}
-                    <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.2 rounded font-mono">SUPER_ADMIN</span>
-                  </div>
-                  <span className="text-[10px] text-neutral-400">Contrôle Total • Audit, KYC & Trésorerie active</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAdminModal(true)}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition"
-              >
-                Console Admin
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <button onClick={() => setShowAdminModal(true)} className="p-2 bg-black/40 rounded-lg border border-white/10 text-[11px] hover:border-white/30">
-                <div className="font-bold text-white">12 Dossiers</div>
-                <div className="text-[10px] text-neutral-400">Vérification KYC</div>
-              </button>
-              <button onClick={() => setShowAdminModal(true)} className="p-2 bg-black/40 rounded-lg border border-white/10 text-[11px] hover:border-white/30">
-                <div className="font-bold text-emerald-400">2 Retraits</div>
-                <div className="text-[10px] text-neutral-400">&gt; 1 000 000 FCFA</div>
-              </button>
-              <button onClick={() => setShowAdminModal(true)} className="p-2 bg-black/40 rounded-lg border border-white/10 text-[11px] hover:border-white/30">
-                <div className="font-bold text-sky-400">Grand Livre</div>
-                <div className="text-[10px] text-neutral-400">Ledger Débit=Crédit</div>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {currentUser && !isAdmin && (
-          <div className="bg-gradient-to-r from-emerald-950/70 to-neutral-900 border border-emerald-500/30 rounded-2xl p-3.5 space-y-2.5 shadow-md">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shadow">
-                  AN
-                </span>
-                <div>
-                  <div className="font-bold text-xs text-white flex items-center gap-1.5">
-                    {currentUser.displayName}
-                    <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.2 rounded font-mono">BÉNIN 🇧🇯</span>
-                  </div>
-                  <span className="text-[10px] text-neutral-400">Citoyen Solidaire • Portefeuille & Cagnottes</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowUserSpaceModal(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition"
-              >
-                Mon Espace
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <button onClick={() => setShowUserSpaceModal(true)} className="p-2 bg-black/40 rounded-lg border border-white/10 text-[11px] hover:border-white/30">
-                <div className="font-mono font-bold text-emerald-400">{formatCurrency(userWalletBalance, "XOF")}</div>
-                <div className="text-[10px] text-neutral-400">Mon Portefeuille</div>
-              </button>
-              <button onClick={() => setShowCreateCampaignModal(true)} className="p-2 bg-black/40 rounded-lg border border-white/10 text-[11px] hover:border-white/30">
-                <div className="font-bold text-white">+ Créer</div>
-                <div className="text-[10px] text-neutral-400">Cagnotte solidaire</div>
-              </button>
-              <button onClick={() => { setSelectedCampaign(campaigns[0]!); setShowLiveModal(true); }} className="p-2 bg-black/40 rounded-lg border border-white/10 text-[11px] hover:border-white/30">
-                <div className="font-bold text-red-400">🔴 Live Agora</div>
-                <div className="text-[10px] text-neutral-400">Rejoindre direct</div>
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between text-xs text-neutral-500 px-1 pt-1">
-          <span>{filteredCampaigns.length} cause(s) • Scrollez pour explorer le flux</span>
-          <button
-            onClick={() => setShowAdminModal(true)}
-            className="text-[11px] text-neutral-400 hover:text-foreground underline"
-          >
-            Console Contrôle
-          </button>
-        </div>
-
-        {/* FEED DES CAUSES */}
-        {filteredCampaigns.map((camp) => {
-          const progress = Math.min(100, Math.round((Number(camp.collectedMinor) / Number(camp.goalMinor)) * 100));
+      {/* 2. FIL VIDÉO VERTICAL INFINI AVEC DÉFILEMENT MAGNÉTIQUE (SNAP TIKTOK) */}
+      <div
+        ref={feedRef}
+        onScroll={handleScroll}
+        className="flex-1 w-full h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar relative"
+      >
+        {filteredFeed.map((camp) => {
+          const progressPercent = Math.min(100, Math.round((Number(camp.collectedMinor) / Number(camp.goalMinor)) * 100));
 
           return (
-            <article
-              key={camp.id}
-              className={`relative rounded-2xl overflow-hidden border border-neutral-800 bg-gradient-to-b ${camp.bgGradient} p-4 text-white shadow-lg space-y-4 transition-transform`}
+            <section
+              key={camp.uniqueKey}
+              className="h-full w-full snap-start snap-always relative flex flex-col justify-between overflow-hidden bg-neutral-950"
             >
-              {/* Badges supérieurs */}
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span
-                    className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                      camp.isUrgent ? "bg-red-600 text-white animate-pulse" : "bg-neutral-800 text-neutral-200"
-                    }`}
-                  >
+              {/* ARRIÈRE-PLAN VIDÉO LÉGER & FLUIDE (SIMULÉ, NON CHARGÉ POUR ÉCONOMIE DE DONNÉES) */}
+              <div
+                onClick={() => setIsPlaying(!isPlaying)}
+                className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient} flex items-center justify-center cursor-pointer`}
+              >
+                {/* Décor cinématique d'onde vidéo */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/5 via-transparent to-black/60 opacity-80" />
+                <div className="absolute top-20 right-4 text-[10px] font-mono bg-black/50 text-neutral-400 px-2 py-0.5 rounded-full border border-white/10">
+                  {camp.durationLabel} • Mode Léger
+                </div>
+
+                {!isPlaying && (
+                  <div className="w-16 h-16 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-2xl text-white backdrop-blur shadow-2xl animate-scale-in">
+                    ▶
+                  </div>
+                )}
+              </div>
+
+              {/* OVERLAY D'INFORMATIONS SUPÉRIEURES */}
+              <div className="relative z-10 pt-14 px-4 flex justify-between items-start pointer-events-none">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white">
                     {camp.categoryLabel}
                   </span>
                   {camp.isCertified && (
-                    <span className="bg-sky-500/90 text-white text-[11px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 shadow-sm">
-                      ✓ Certifiée Charityy
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/80 text-white flex items-center gap-1 shadow">
+                      ✓ Certifiée
                     </span>
                   )}
                 </div>
@@ -656,474 +628,265 @@ export default function HomePage() {
                       setSelectedCampaign(camp);
                       setShowLiveModal(true);
                     }}
-                    className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow animate-bounce"
+                    className="pointer-events-auto bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg animate-bounce"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    LIVE ({camp.liveViewers} spectateurs)
+                    LIVE ({camp.liveViewers})
                   </button>
                 )}
               </div>
 
-              {/* Contenu principal de la cause */}
-              <div className="space-y-2 pt-2">
-                <h2 className="text-base sm:text-lg font-bold leading-snug tracking-tight text-white">
-                  {camp.title}
-                </h2>
-                <p className="text-xs text-neutral-300 leading-relaxed line-clamp-3">{camp.story}</p>
-                <div className="flex items-center justify-between text-xs text-neutral-400 pt-1">
-                  <span>
-                    👤 <strong>{camp.authorName}</strong> ({camp.authorRole})
-                  </span>
-                  <span>📍 {camp.city}</span>
-                </div>
-              </div>
-
-              {/* Barre de collecte financière */}
-              <div className="bg-black/40 backdrop-blur-sm p-3 rounded-xl border border-white/10 space-y-2">
-                <div className="flex justify-between items-baseline text-xs">
-                  <div>
-                    <span className="text-sm font-bold text-emerald-400 font-mono">
-                      {formatCurrency(camp.collectedMinor, camp.currency)}
-                    </span>
-                    <span className="text-neutral-400 text-[11px]"> / {formatCurrency(camp.goalMinor, camp.currency)}</span>
+              {/* COLONNE D'ACTIONS LATÉRALE DROITE (STYLE TIKTOK) */}
+              <div className="absolute right-2.5 bottom-28 z-30 flex flex-col items-center gap-3.5 pointer-events-auto">
+                {/* Avatar Auteur */}
+                <div className="relative mb-1">
+                  <div className="w-10 h-10 rounded-full border-2 border-white bg-neutral-800 flex items-center justify-center text-xs font-bold shadow-md">
+                    {camp.authorName.charAt(0)}
                   </div>
-                  <span className="font-bold text-white font-mono">{progress}%</span>
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] flex items-center justify-center font-bold">
+                    +
+                  </div>
                 </div>
 
-                <div className="w-full bg-neutral-800 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Jauge des 100 Signatures citoyennes */}
-              <div className="bg-black/30 p-2.5 rounded-xl border border-white/5 space-y-1.5 text-xs">
-                <div className="flex justify-between items-center text-neutral-200">
-                  <span className="flex items-center gap-1">
-                    ✍️ Mobilisation citoyenne anti-fraude
+                {/* Like */}
+                <button
+                  onClick={() => handleLike(camp.uniqueKey || camp.id)}
+                  className="flex flex-col items-center gap-0.5 group"
+                >
+                  <div className={`w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-xl transition transform active:scale-125 ${
+                    camp.isLiked ? "text-red-500" : "text-white"
+                  }`}>
+                    {camp.isLiked ? "❤️" : "🤍"}
+                  </div>
+                  <span className="text-[10px] font-bold text-white shadow-sm">
+                    {camp.likesCount >= 1000 ? `${(camp.likesCount / 1000).toFixed(1)}k` : camp.likesCount}
                   </span>
-                  <span className="font-mono font-bold text-white">{camp.signaturesCount}/100</span>
-                </div>
-                <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-white h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, camp.signaturesCount)}%` }}
-                  />
-                </div>
-                <div className="text-[10px] text-neutral-400 flex justify-between">
-                  <span>Proches (40)</span>
-                  <span>Personnes Ressources (30)</span>
-                  <span>Communauté (30)</span>
-                </div>
-              </div>
+                </button>
 
-              {/* Barre d'interaction sociale (Like, Commentaire, Partage) */}
-              <div className="flex items-center justify-between pt-1 border-t border-white/10 text-xs">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => handleToggleLike(camp.id)}
-                    className="flex items-center gap-1.5 text-neutral-300 hover:text-red-400 transition font-medium"
-                  >
-                    <span>❤️</span>
-                    <span>{camp.likesCount.toLocaleString()}</span>
-                  </button>
+                {/* Commentaires */}
+                <button
+                  onClick={() => {
+                    setSelectedCampaign(camp);
+                    setShowCommentsModal(true);
+                  }}
+                  className="flex flex-col items-center gap-0.5"
+                >
+                  <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-white transition active:scale-110">
+                    💬
+                  </div>
+                  <span className="text-[10px] font-bold text-white shadow-sm">{camp.commentsCount}</span>
+                </button>
 
-                  <button
-                    onClick={() => {
-                      setSelectedCampaign(camp);
-                      setShowCommentsModal(true);
-                    }}
-                    className="flex items-center gap-1.5 text-neutral-300 hover:text-sky-400 transition font-medium"
-                  >
-                    <span>💬</span>
-                    <span>{camp.commentsCount} avis</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      navigator.clipboard?.writeText(window.location.href);
-                      alert("Lien solidaire copié dans votre presse-papiers !");
-                    }}
-                    className="flex items-center gap-1.5 text-neutral-300 hover:text-white transition font-medium"
-                  >
-                    <span>↗️</span>
-                    <span>{camp.sharesCount}</span>
-                  </button>
-                </div>
-
-                <span className="text-[10px] text-neutral-400 font-mono">Ledger #XOF</span>
-              </div>
-
-              {/* Boutons d'action principaux */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
+                {/* Signatures citoyennes */}
                 <button
                   onClick={() => {
                     setSelectedCampaign(camp);
                     setShowSignatureModal(true);
                   }}
-                  className="bg-white/15 hover:bg-white/25 text-white text-xs font-semibold py-2.5 rounded-xl text-center transition border border-white/10"
+                  className="flex flex-col items-center gap-0.5"
                 >
-                  Signer
+                  <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-amber-400 transition active:scale-110">
+                    ✍️
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-300 shadow-sm">{camp.signaturesCount}/100</span>
                 </button>
 
+                {/* Partage */}
                 <button
                   onClick={() => {
-                    setSelectedCampaign(camp);
-                    setShowDonateModal(true);
+                    navigator.clipboard?.writeText(window.location.href);
+                    showNotification("↗️ Lien de la cause copié dans le presse-papiers !");
                   }}
-                  className="bg-white text-black text-xs font-bold py-2.5 rounded-xl text-center hover:bg-neutral-200 transition shadow"
+                  className="flex flex-col items-center gap-0.5"
                 >
-                  Faire un don
+                  <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-white transition active:scale-110">
+                    ↗️
+                  </div>
+                  <span className="text-[10px] font-bold text-white shadow-sm">{camp.sharesCount}</span>
                 </button>
 
+                {/* Son */}
                 <button
-                  onClick={() => {
-                    setSelectedCampaign(camp);
-                    setShowLiveModal(true);
-                  }}
-                  className={`text-xs font-semibold py-2.5 rounded-xl text-center transition ${
-                    camp.hasLive
-                      ? "bg-red-600 hover:bg-red-700 text-white shadow"
-                      : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-white/5"
-                  }`}
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="w-8 h-8 rounded-full bg-black/40 backdrop-blur border border-white/10 flex items-center justify-center text-xs text-neutral-300"
                 >
-                  {camp.hasLive ? "Direct Live 🔴" : "Salon Live"}
+                  {isMuted ? "🔇" : "🔊"}
                 </button>
               </div>
-            </article>
+
+              {/* OVERLAY D'INFORMATIONS DU BAS (SUR LA VIDÉO FAÇON TIKTOK) */}
+              <div className="relative z-20 pb-4 px-4 pr-16 bg-gradient-to-t from-black via-black/80 to-transparent pt-12 space-y-2 pointer-events-auto">
+                {/* Auteur & Ville */}
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-white">@{camp.handle}</span>
+                  <span className="text-[11px] text-neutral-300">• 📍 {camp.city}</span>
+                </div>
+
+                {/* Titre et description compacte */}
+                <h3 className="font-bold text-xs text-white leading-snug line-clamp-2">
+                  {camp.title}
+                </h3>
+                <p className="text-[11px] text-neutral-300 line-clamp-2 leading-relaxed">
+                  {camp.story} <span className="text-sky-400 font-semibold">#solidarite #charityy #don</span>
+                </p>
+
+                {/* Barre de collecte financière transparente */}
+                <div className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl border border-white/15 space-y-1.5 shadow-lg">
+                  <div className="flex justify-between items-baseline text-[11px]">
+                    <div>
+                      <span className="font-extrabold text-emerald-400 font-mono text-xs">
+                        {formatCurrency(camp.collectedMinor, camp.currency)}
+                      </span>
+                      <span className="text-neutral-400"> / {formatCurrency(camp.goalMinor, camp.currency)}</span>
+                    </div>
+                    <span className="font-mono font-bold text-white text-[11px]">{progressPercent}%</span>
+                  </div>
+
+                  <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* GRAND BOUTON SOLIDAIRE PRINCIPAL */}
+                <div className="pt-0.5">
+                  {camp.hasLive ? (
+                    <button
+                      onClick={() => {
+                        setSelectedCampaign(camp);
+                        setShowLiveModal(true);
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                      REJOINDRE LE LIVE ({camp.liveViewers} spectateurs)
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedCampaign(camp);
+                        setShowDonateModal(true);
+                      }}
+                      className="w-full bg-white text-black hover:bg-neutral-200 font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+                    >
+                      <span>🤝</span> Faire un don solidaire (Moneroo)
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
           );
         })}
+      </div>
 
-        {/* Mentions légales de transparence */}
-        <div className="p-3 bg-surface-muted rounded-xl text-[11px] text-neutral-600 space-y-1.5 border border-surface-border">
-          <p>
-            <strong>Transparence & Règle d&apos;or :</strong> Les signatures citoyennes attestent d&apos;une mobilisation locale vérifiée.
-            La certification Charityy valide la concordance documentaire (devis, factures médicales, identités).
-          </p>
-          <p className="text-[10px] text-neutral-500">
-            Chaque transaction fait l&apos;objet d&apos;une double écriture immuable dans le grand livre comptable.
-          </p>
-        </div>
-      </main>
-
-      {/* PIED DE PAGE */}
-      <footer className="p-4 border-t border-surface-border text-center text-xs text-neutral-500 space-y-2">
-        <div className="flex justify-center gap-4 text-[11px]">
-          <Link href="/login" className="hover:text-foreground font-semibold">Connexion</Link>
-          <Link href="/cgu" className="hover:text-foreground underline">CGU</Link>
-          <Link href="/confidentialite" className="hover:text-foreground underline">Confidentialité</Link>
-          <a href="/api/currency/rates" target="_blank" className="hover:text-foreground">Taux Multi-Devises</a>
-        </div>
-        <p className="text-[10px] text-neutral-400">© 2026 Charityy : monde meilleure • Plateforme solidaire sécurisée</p>
-      </footer>
-
-      {/* MODAL ESPACE CITOYEN & WALLET (POUR ARMINEL NOUATIN & CITOYENS) */}
-      {showUserSpaceModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-background w-full max-w-md rounded-2xl p-5 space-y-4 border border-surface-border shadow-xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-surface-border pb-3">
-              <div>
-                <h3 className="font-bold text-sm">Mon Espace Citoyen & Portefeuille</h3>
-                <span className="text-[11px] text-neutral-500 block">
-                  {currentUser?.displayName} • Bénin 🇧🇯 (Conformité KYC validée)
-                </span>
-              </div>
-              <button onClick={() => setShowUserSpaceModal(false)} className="text-neutral-500 text-sm">
-                ✕
-              </button>
-            </div>
-
-            {/* Solde Wallet */}
-            <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-900/60 to-neutral-900 border border-emerald-500/30 text-white space-y-3">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-300 block">
-                Solde de mon Portefeuille Solidaire
-              </span>
-              <div className="text-2xl font-black font-mono text-emerald-400">
-                {formatCurrency(userWalletBalance, "XOF")}
-              </div>
-              <span className="text-[10px] text-neutral-300 block">
-                Prêt pour dons directs, cadeaux de live et soutien citoyen immédiat.
-              </span>
-            </div>
-
-            {rechargeSuccess && (
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs text-emerald-600 font-medium">
-                {rechargeSuccess}
-              </div>
-            )}
-
-            {/* Options de recharge rapide */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-neutral-700 block">
-                Recharger mon portefeuille (Mobile Money Bénin) :
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => handleRechargeWallet(10000, "MTN Mobile Money Bénin")}
-                  className="p-2 border border-surface-border rounded-lg bg-surface-muted text-xs font-semibold hover:border-emerald-500 transition text-left"
-                >
-                  <div className="text-yellow-600 font-bold">MTN Bénin</div>
-                  <div className="text-[11px] font-mono">+10 000 F</div>
-                </button>
-                <button
-                  onClick={() => handleRechargeWallet(25000, "Moov Money Bénin")}
-                  className="p-2 border border-surface-border rounded-lg bg-surface-muted text-xs font-semibold hover:border-emerald-500 transition text-left"
-                >
-                  <div className="text-blue-600 font-bold">Moov Bénin</div>
-                  <div className="text-[11px] font-mono">+25 000 F</div>
-                </button>
-                <button
-                  onClick={() => handleRechargeWallet(50000, "Wave")}
-                  className="p-2 border border-surface-border rounded-lg bg-surface-muted text-xs font-semibold hover:border-emerald-500 transition text-left"
-                >
-                  <div className="text-sky-500 font-bold">Wave</div>
-                  <div className="text-[11px] font-mono">+50 000 F</div>
-                </button>
-              </div>
-            </div>
-
-            {/* Actions citoyennes */}
-            <div className="pt-2 border-t border-surface-border space-y-2">
-              <button
-                onClick={() => {
-                  setShowUserSpaceModal(false);
-                  setShowCreateCampaignModal(true);
-                }}
-                className="w-full bg-foreground text-background py-2.5 rounded-xl font-bold text-xs hover:opacity-90 transition shadow flex items-center justify-center gap-1.5"
-              >
-                <span>➕</span> Lancer une nouvelle cagnotte solidaire
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL CRÉATION DE CAGNOTTE CITOYENNE */}
-      {showCreateCampaignModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-background w-full max-w-md rounded-2xl p-5 space-y-4 border border-surface-border shadow-xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-surface-border pb-3">
-              <div>
-                <h3 className="font-bold text-sm">Lancer une cagnotte solidaire</h3>
-                <span className="text-[11px] text-neutral-500">Parcours sécurisé avec pièces justificatives</span>
-              </div>
-              <button onClick={() => setShowCreateCampaignModal(false)} className="text-neutral-500 text-sm">
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateCampaignSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-semibold block text-neutral-700 mb-1">Titre de votre cause :</label>
-                <input
-                  type="text"
-                  required
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ex: Forage pour le dispensaire de Parakou"
-                  className="w-full bg-surface-muted border border-surface-border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-foreground"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-semibold block text-neutral-700 mb-1">Objectif financier :</label>
-                  <input
-                    type="number"
-                    required
-                    value={newGoal}
-                    onChange={(e) => setNewGoal(Number(e.target.value))}
-                    className="w-full bg-surface-muted border border-surface-border rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-1 focus:ring-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block text-neutral-700 mb-1">Catégorie :</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full bg-surface-muted border border-surface-border rounded-lg px-2.5 py-2"
-                  >
-                    <option value="MEDICAL">Urgence Médicale</option>
-                    <option value="WATER">Eau & Climat</option>
-                    <option value="EDUCATION">Éducation & Jeunesse</option>
-                    <option value="MATERNITY">Maternité & Nourrissons</option>
-                    <option value="DISASTER">Urgence Sinistrés</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold block text-neutral-700 mb-1">Localisation :</label>
-                <input
-                  type="text"
-                  required
-                  value={newCity}
-                  onChange={(e) => setNewCity(e.target.value)}
-                  placeholder="Ex: Cotonou, Bénin"
-                  className="w-full bg-surface-muted border border-surface-border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-foreground"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold block text-neutral-700 mb-1">Histoire et contexte vérifiable :</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={newStory}
-                  onChange={(e) => setNewStory(e.target.value)}
-                  placeholder="Expliquez la situation, les devis hospitaliers ou associatifs..."
-                  className="w-full bg-surface-muted border border-surface-border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-foreground"
-                />
-              </div>
-
-              <div className="p-2.5 rounded-lg border border-dashed border-surface-border bg-surface-muted text-neutral-500 text-[11px] space-y-1">
-                <span className="font-semibold text-foreground block">📄 Justificatif ou devis (Simulé R2 Privé) :</span>
-                <span>Devis hospitalier, facture proforma ou rapport associatif chiffré AES-256-GCM.</span>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-foreground text-background py-3 rounded-xl font-bold text-xs hover:opacity-90 transition shadow"
-              >
-                Publier ma cagnotte pour signatures
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL AUTH : CONNEXION INSTANTANÉE & COMPTES DE TEST */}
+      {/* MODAL 1 : CONNEXION SÉCURISÉE (AUCUNE DONNÉE DE TEST VISIBLE) */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-background w-full max-w-md rounded-2xl p-6 space-y-4 border border-surface-border shadow-xl">
-            <div className="flex justify-between items-center border-b border-surface-border pb-3">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-6 space-y-4 border border-neutral-800 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>
-                <h3 className="font-bold text-sm">Espace Utilisateur & Connexion</h3>
-                <span className="text-[11px] text-neutral-500">Connectez-vous pour signer et gérer vos dons</span>
+                <h3 className="font-bold text-sm">Connexion à votre espace</h3>
+                <span className="text-[10px] text-neutral-400">Accédez à votre compte en toute sécurité</span>
               </div>
-              <button onClick={() => setShowAuthModal(false)} className="text-neutral-500 hover:text-foreground text-sm">
+              <button onClick={() => setShowAuthModal(false)} className="text-neutral-400 hover:text-white text-sm">
                 ✕
               </button>
             </div>
 
             {authError && (
-              <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-600 font-medium">
+              <div className="p-2.5 bg-red-500/20 border border-red-500/30 rounded-lg text-xs text-red-300 font-medium">
                 {authError}
               </div>
             )}
 
-            <form onSubmit={(e) => handleLoginSubmit(e)} className="space-y-3">
+            <form onSubmit={handleLoginSubmit} className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-neutral-600 block mb-1">Identifiant, Email ou Téléphone</label>
+                <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                  Email ou Numéro de téléphone
+                </label>
                 <input
                   type="text"
                   required
                   value={authIdentifier}
                   onChange={(e) => setAuthIdentifier(e.target.value)}
-                  placeholder="Ex: yekpondafe@gmail.com ou +2290195153177"
-                  className="w-full bg-surface-muted border border-surface-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
+                  placeholder="votre.email@exemple.com ou +229..."
+                  className="w-full bg-black/60 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-neutral-600 block mb-1">Mot de passe</label>
+                <label className="text-xs font-semibold text-neutral-300 block mb-1">Mot de passe</label>
                 <input
                   type="password"
                   required
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-surface-muted border border-surface-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
+                  className="w-full bg-black/60 border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full bg-foreground text-background py-2.5 rounded-lg font-bold text-xs hover:opacity-90 transition disabled:opacity-50"
+                className="w-full bg-white text-black py-2.5 rounded-lg font-bold text-xs hover:bg-neutral-200 transition disabled:opacity-50"
               >
                 {authLoading ? "Connexion..." : "Se connecter"}
               </button>
             </form>
 
-            {/* Comptes configurés avec 1-clic direct */}
-            <div className="pt-3 border-t border-surface-border space-y-2">
-              <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider block">
-                Comptes de test configurés (1 clic) :
-              </span>
-              <div className="grid grid-cols-2 gap-2 text-left">
-                <button
-                  type="button"
-                  onClick={() => handleLoginSubmit(undefined, "yekpondafe@gmail.com", "CharityyBoss3NAtiposy@")}
-                  className="p-2.5 border-2 border-foreground/30 rounded-xl bg-surface-muted hover:border-foreground transition text-left"
-                >
-                  <div className="text-xs font-bold text-foreground">👑 Quentin DAVAKAN</div>
-                  <div className="text-[10px] text-neutral-500">Admin Général • SUPER_ADMIN</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleLoginSubmit(undefined, "arminellenouation@gmail.com", "DjetoDVK21")}
-                  className="p-2.5 border-2 border-foreground/30 rounded-xl bg-surface-muted hover:border-foreground transition text-left"
-                >
-                  <div className="text-xs font-bold text-foreground">👤 Arminel NOUATIN</div>
-                  <div className="text-[10px] text-neutral-500">Citoyen Bénin • Rôle USER</div>
-                </button>
-              </div>
-
-              <div className="text-center pt-2">
-                <Link
-                  href="/login"
-                  onClick={() => setShowAuthModal(false)}
-                  className="text-xs text-neutral-600 hover:text-foreground underline"
-                >
-                  Accéder à la page complète de connexion / inscription
-                </Link>
-              </div>
+            <div className="text-center pt-2 border-t border-neutral-800">
+              <Link
+                href="/login"
+                onClick={() => setShowAuthModal(false)}
+                className="text-xs text-neutral-400 hover:text-white underline"
+              >
+                Accéder à la page complète de connexion / inscription
+              </Link>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL COMMENTAIRES INTERACTIFS */}
+      {/* MODAL 2 : COMMENTAIRES EN BOTTOM SHEET TIKTOK */}
       {showCommentsModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-background w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 border border-surface-border max-h-[80vh] flex flex-col">
-            <div className="flex justify-between items-center border-b border-surface-border pb-3">
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-end justify-center">
+          <div className="bg-neutral-900 text-white w-full max-w-md rounded-t-2xl p-4 space-y-3 border-t border-neutral-800 max-h-[70vh] flex flex-col shadow-2xl animate-slide-up">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-2.5">
               <div>
-                <h3 className="font-bold text-sm">Commentaires & Témoignages</h3>
-                <span className="text-[10px] text-neutral-500 block truncate max-w-[280px]">
+                <h4 className="font-bold text-xs text-white">Commentaires ({selectedCampaign.commentsCount})</h4>
+                <span className="text-[10px] text-neutral-400 truncate block max-w-[280px]">
                   {selectedCampaign.title}
                 </span>
               </div>
-              <button onClick={() => setShowCommentsModal(false)} className="text-neutral-500 hover:text-foreground text-sm">
+              <button onClick={() => setShowCommentsModal(false)} className="text-neutral-400 hover:text-white text-sm">
                 ✕
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
               {selectedCampaign.commentsList.map((comm, idx) => (
-                <div key={idx} className="p-2.5 rounded-lg bg-surface-muted border border-surface-border text-xs space-y-1">
-                  <div className="flex justify-between text-neutral-600">
-                    <span className="font-semibold text-foreground">{comm.user}</span>
-                    <span className="text-[10px] text-neutral-400">{comm.time}</span>
+                <div key={idx} className="p-2 rounded-xl bg-black/40 border border-neutral-800 space-y-0.5">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="font-bold text-white">{comm.user}</span>
+                    <span className="text-[10px] text-neutral-500">{comm.time}</span>
                   </div>
-                  <p className="text-neutral-700">{comm.text}</p>
+                  <p className="text-neutral-300">{comm.text}</p>
                 </div>
               ))}
             </div>
 
-            <form onSubmit={handleAddComment} className="flex gap-2 pt-2 border-t border-surface-border">
+            <form onSubmit={handleAddComment} className="flex gap-2 pt-2 border-t border-neutral-800">
               <input
                 type="text"
                 value={newCommentInput}
                 onChange={(e) => setNewCommentInput(e.target.value)}
-                placeholder="Ajouter un mot de soutien solidaire..."
-                className="flex-1 bg-surface-muted border border-surface-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-foreground"
+                placeholder="Ajouter un commentaire solidaire..."
+                className="flex-1 bg-black/60 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
               />
-              <button type="submit" className="bg-foreground text-background font-semibold text-xs px-4 py-2 rounded-lg">
+              <button type="submit" className="bg-white text-black font-bold text-xs px-4 py-2 rounded-xl">
                 Publier
               </button>
             </form>
@@ -1131,29 +894,29 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL DONATION AVEC MONEROO & SPLIT */}
+      {/* MODAL 3 : TUNNEL DE DON MONEROO & SPLIT TRANSPARENT */}
       {showDonateModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-background w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 border border-surface-border">
-            <div className="flex justify-between items-center border-b border-surface-border pb-3">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-neutral-900 text-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>
                 <h3 className="font-bold text-sm">Faire un don solidaire</h3>
-                <span className="text-[10px] text-neutral-500 block truncate max-w-[280px]">
+                <span className="text-[10px] text-neutral-400 block truncate max-w-[280px]">
                   Pour : {selectedCampaign.title}
                 </span>
               </div>
-              <button onClick={() => setShowDonateModal(false)} className="text-neutral-500 text-sm">
+              <button onClick={() => setShowDonateModal(false)} className="text-neutral-400 text-sm">
                 ✕
               </button>
             </div>
 
             {donationSuccess ? (
               <div className="text-center py-6 space-y-3">
-                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+                <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
                   ✓
                 </div>
                 <h4 className="font-bold text-sm">Don validé & inscrit au Grand Livre</h4>
-                <p className="text-xs text-neutral-600">
+                <p className="text-xs text-neutral-400">
                   L&apos;écriture comptable a été enregistrée de façon immuable dans le ledger en partie double.
                 </p>
                 <button
@@ -1161,7 +924,7 @@ export default function HomePage() {
                     setDonationSuccess(false);
                     setShowDonateModal(false);
                   }}
-                  className="w-full bg-foreground text-background py-2.5 rounded-lg font-semibold text-xs"
+                  className="w-full bg-white text-black py-2.5 rounded-lg font-bold text-xs"
                 >
                   Retourner au fil
                 </button>
@@ -1169,7 +932,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-neutral-500 block mb-1.5 font-medium">Choisissez le montant :</label>
+                  <label className="text-xs text-neutral-400 block mb-1.5 font-medium">Montant :</label>
                   <div className="grid grid-cols-4 gap-2">
                     {[2000, 5000, 10000, 25000].map((amt) => (
                       <button
@@ -1177,8 +940,8 @@ export default function HomePage() {
                         onClick={() => setDonationAmount(amt)}
                         className={`py-2 text-xs font-mono rounded-lg border transition ${
                           donationAmount === amt
-                            ? "border-foreground bg-foreground text-background font-bold"
-                            : "border-surface-border bg-surface-muted text-foreground"
+                            ? "border-white bg-white text-black font-bold"
+                            : "border-neutral-800 bg-neutral-800 text-white"
                         }`}
                       >
                         {amt.toLocaleString()} F
@@ -1188,24 +951,24 @@ export default function HomePage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-neutral-500 block mb-1.5 font-medium">Moyen de paiement :</label>
+                  <label className="text-xs text-neutral-400 block mb-1.5 font-medium">Moyen de paiement :</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setSelectedMethod("mobile_money")}
                       className={`py-2 px-3 text-xs rounded-lg border text-left transition ${
                         selectedMethod === "mobile_money"
-                          ? "border-foreground bg-surface-muted font-bold"
-                          : "border-surface-border text-neutral-600"
+                          ? "border-emerald-500 bg-emerald-500/10 font-bold"
+                          : "border-neutral-800 text-neutral-400"
                       }`}
                     >
-                      📱 Mobile Money (Wave, Orange, MTN, Moov)
+                      📱 Mobile Money (Wave, MTN, Orange, Moov)
                     </button>
                     <button
                       onClick={() => setSelectedMethod("card")}
                       className={`py-2 px-3 text-xs rounded-lg border text-left transition ${
                         selectedMethod === "card"
-                          ? "border-foreground bg-surface-muted font-bold"
-                          : "border-surface-border text-neutral-600"
+                          ? "border-emerald-500 bg-emerald-500/10 font-bold"
+                          : "border-neutral-800 text-neutral-400"
                       }`}
                     >
                       💳 Carte Bancaire (Visa, Mastercard)
@@ -1214,27 +977,27 @@ export default function HomePage() {
                 </div>
 
                 {/* Ventilation financière transparente */}
-                <div className="bg-surface-muted p-3 rounded-xl text-xs space-y-1.5 border border-surface-border">
-                  <div className="font-bold text-neutral-700">Ventilation transparente du don :</div>
+                <div className="bg-black/40 p-3 rounded-xl text-xs space-y-1 border border-neutral-800">
+                  <div className="font-bold text-neutral-300">Ventilation du don :</div>
                   <div className="flex justify-between">
-                    <span className="text-neutral-500">Montant brut versé :</span>
+                    <span className="text-neutral-400">Montant versé :</span>
                     <span className="font-mono font-semibold">{formatCurrency(splitBreakdown.grossAmountMinor, "XOF")}</span>
                   </div>
-                  <div className="flex justify-between text-neutral-500">
+                  <div className="flex justify-between text-neutral-400">
                     <span>Frais processeur Moneroo :</span>
                     <span className="font-mono">-{formatCurrency(splitBreakdown.processorFeeMinor, "XOF")}</span>
                   </div>
-                  <div className="flex justify-between text-neutral-500">
-                    <span>Frais plateforme (3% sur net) :</span>
+                  <div className="flex justify-between text-neutral-400">
+                    <span>Frais plateforme (3%) :</span>
                     <span className="font-mono">-{formatCurrency(splitBreakdown.platformFeeMinor, "XOF")}</span>
                   </div>
-                  <div className="flex justify-between text-neutral-500">
-                    <span>Part créateur apporteur (2%) :</span>
+                  <div className="flex justify-between text-neutral-400">
+                    <span>Part créateur (2%) :</span>
                     <span className="font-mono">-{formatCurrency(splitBreakdown.creatorShareMinor, "XOF")}</span>
                   </div>
-                  <div className="flex justify-between font-bold border-t border-surface-border pt-1 text-foreground">
+                  <div className="flex justify-between font-bold border-t border-neutral-800 pt-1 text-white">
                     <span>Attribué au bénéficiaire :</span>
-                    <span className="font-mono text-emerald-600">
+                    <span className="font-mono text-emerald-400">
                       {formatCurrency(splitBreakdown.beneficiaryAmountMinor, "XOF")}
                     </span>
                   </div>
@@ -1242,7 +1005,7 @@ export default function HomePage() {
 
                 <button
                   onClick={() => setDonationSuccess(true)}
-                  className="w-full bg-foreground text-background py-3 rounded-xl font-bold text-sm hover:opacity-90 transition shadow"
+                  className="w-full bg-white text-black py-3 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
                 >
                   Confirmer le don de {formatCurrency(BigInt(donationAmount), "XOF")}
                 </button>
@@ -1252,48 +1015,40 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL SIGNATURES CITOYENNES */}
+      {/* MODAL 4 : SIGNATURES CITOYENNES */}
       {showSignatureModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-background w-full max-w-md rounded-2xl p-5 space-y-4 border border-surface-border shadow-xl">
-            <div className="flex justify-between items-center border-b border-surface-border pb-3">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>
-                <h3 className="font-bold text-sm">Apporter votre signature citoyenne</h3>
-                <span className="text-[10px] text-neutral-500 block truncate max-w-[280px]">
+                <h3 className="font-bold text-sm">Signature citoyenne anti-fraude</h3>
+                <span className="text-[10px] text-neutral-400 block truncate max-w-[250px]">
                   {selectedCampaign.title}
                 </span>
               </div>
-              <button onClick={() => setShowSignatureModal(false)} className="text-neutral-500 text-sm">
+              <button onClick={() => setShowSignatureModal(false)} className="text-neutral-400 text-sm">
                 ✕
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <p className="text-neutral-600">
-                Chaque signature est nominative et liée à une empreinte anti-sybil pour prévenir les faux votes.
-                À 100 signatures vérifiées, la cagnotte passe automatiquement en validation communautaire.
+              <p className="text-neutral-300">
+                Chaque signature est liée à une empreinte anti-sybil. À 100 signatures vérifiées, la cagnotte passe
+                en validation communautaire.
               </p>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold block text-neutral-700">Votre qualité vis-à-vis de la cause :</label>
-                <select className="w-full border border-surface-border p-2.5 rounded-lg text-xs bg-surface-muted">
-                  <option value="COMMUNITY">Membre de la communauté / Citoyen solidaire</option>
-                  <option value="RELATIVE">Proche / Ami de la famille</option>
-                  <option value="RESOURCE_PERSON">Personne ressource (Médecin, Enseignant, Autorité locale)</option>
-                </select>
-              </div>
-
               <div className="space-y-1">
-                <label className="font-semibold block text-neutral-700">Mot d&apos;encouragement ou attestation :</label>
-                <textarea
-                  className="w-full border border-surface-border p-2.5 rounded-lg text-xs bg-surface-muted h-20 focus:outline-none focus:ring-1 focus:ring-foreground"
-                  placeholder="Je soutiens cette cause car..."
-                />
+                <label className="font-semibold block text-neutral-400">Votre qualité :</label>
+                <select className="w-full border border-neutral-700 p-2 rounded-lg text-xs bg-black text-white">
+                  <option value="COMMUNITY">Membre de la communauté / Citoyen</option>
+                  <option value="RELATIVE">Proche / Ami de la famille</option>
+                  <option value="RESOURCE_PERSON">Personne ressource (Médecin, Enseignant)</option>
+                </select>
               </div>
 
               <button
                 onClick={handleSignCampaign}
-                className="w-full bg-foreground text-background py-3 rounded-xl font-bold text-xs hover:opacity-90 transition shadow"
+                className="w-full bg-white text-black py-2.5 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
               >
                 Valider ma signature
               </button>
@@ -1302,12 +1057,12 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL DIRECT SOLIDAIRE (AGORA RTC, CHAT, CADEAUX) */}
+      {/* MODAL 5 : DIRECT SOLIDAIRE (AGORA RTC & CADEAUX) */}
       {showLiveModal && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col max-w-lg mx-auto w-full text-white">
-          <div className="p-3 border-b border-white/10 flex justify-between items-center bg-black/60">
+        <div className="fixed inset-0 z-50 bg-black flex flex-col max-w-md mx-auto w-full text-white">
+          <div className="p-3 border-b border-white/10 flex justify-between items-center bg-black/80">
             <div>
-              <span className="text-xs font-bold text-red-500 uppercase tracking-wider block flex items-center gap-1.5">
+              <span className="text-xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
                 EN DIRECT SOLIDAIRE
               </span>
@@ -1341,7 +1096,7 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="h-44 bg-black/60 p-3 overflow-y-auto space-y-1.5 text-xs border-t border-white/10">
+          <div className="h-40 bg-black/70 p-3 overflow-y-auto space-y-1.5 text-xs border-t border-white/10">
             {chatMessages.map((msg, i) => (
               <p key={i} className="text-neutral-200">
                 {msg}
@@ -1384,65 +1139,228 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 4 : BACK-OFFICE ADMIN & AUDIT (QUENTIN DAVAKAN / ADMINS) */}
-      {showAdminModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-background w-full max-w-lg rounded-2xl p-5 space-y-4 border border-surface-border max-h-[85vh] overflow-y-auto shadow-xl">
-            <div className="flex justify-between items-center border-b border-surface-border pb-3">
+      {/* MODAL 6 : ESPACE CITOYEN & WALLET (POUR UTILISATEUR CONNECTÉ) */}
+      {showUserSpaceModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>
-                <h3 className="font-bold text-sm">Console d&apos;Administration Générale</h3>
-                <span className="text-xs text-neutral-500">
-                  Connecté : Quentin DAVAKAN (SUPER_ADMIN) • Piste d&apos;audit active
+                <h3 className="font-bold text-sm">Mon Espace Citoyen</h3>
+                <span className="text-[10px] text-neutral-400 block">{currentUser?.displayName}</span>
+              </div>
+              <button onClick={() => setShowUserSpaceModal(false)} className="text-neutral-400 text-sm">
+                ✕
+              </button>
+            </div>
+
+            {/* Solde Wallet */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-900/60 to-black border border-emerald-500/30 space-y-2">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-300 block">
+                Solde de mon Portefeuille Solidaire
+              </span>
+              <div className="text-2xl font-black font-mono text-emerald-400">
+                {formatCurrency(userWalletBalance, "XOF")}
+              </div>
+            </div>
+
+            {rechargeSuccess && (
+              <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-xs text-emerald-300 font-medium">
+                {rechargeSuccess}
+              </div>
+            )}
+
+            {/* Recharges rapides */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-neutral-300 block">
+                Recharger mon portefeuille (Mobile Money Bénin) :
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => handleRechargeWallet(10000, "MTN Bénin")}
+                  className="p-2 border border-neutral-800 rounded-lg bg-black text-xs font-semibold hover:border-emerald-500 transition text-left"
+                >
+                  <div className="text-yellow-500 font-bold">MTN Bénin</div>
+                  <div className="text-[11px] font-mono">+10 000 F</div>
+                </button>
+                <button
+                  onClick={() => handleRechargeWallet(25000, "Moov Bénin")}
+                  className="p-2 border border-neutral-800 rounded-lg bg-black text-xs font-semibold hover:border-emerald-500 transition text-left"
+                >
+                  <div className="text-blue-400 font-bold">Moov Bénin</div>
+                  <div className="text-[11px] font-mono">+25 000 F</div>
+                </button>
+                <button
+                  onClick={() => handleRechargeWallet(50000, "Wave")}
+                  className="p-2 border border-neutral-800 rounded-lg bg-black text-xs font-semibold hover:border-emerald-500 transition text-left"
+                >
+                  <div className="text-sky-400 font-bold">Wave</div>
+                  <div className="text-[11px] font-mono">+50 000 F</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-neutral-800 space-y-2">
+              <button
+                onClick={() => {
+                  setShowUserSpaceModal(false);
+                  setShowCreateCampaignModal(true);
+                }}
+                className="w-full bg-white text-black py-2.5 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
+              >
+                ➕ Lancer une nouvelle cagnotte solidaire
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full border border-neutral-800 py-2 rounded-xl text-neutral-400 hover:text-white text-xs"
+              >
+                Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 7 : CRÉATION DE CAGNOTTE CITOYENNE */}
+      {showCreateCampaignModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <div>
+                <h3 className="font-bold text-sm">Lancer une cagnotte solidaire</h3>
+                <span className="text-[10px] text-neutral-400">Diffusion instantanée dans le fil TikTok</span>
+              </div>
+              <button onClick={() => setShowCreateCampaignModal(false)} className="text-neutral-400 text-sm">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCampaignSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold block text-neutral-300 mb-1">Titre de votre cause :</label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Ex: Forage solaire pour Parakou"
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-semibold block text-neutral-300 mb-1">Objectif (FCFA) :</label>
+                  <input
+                    type="number"
+                    required
+                    value={newGoal}
+                    onChange={(e) => setNewGoal(Number(e.target.value))}
+                    className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 font-mono text-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold block text-neutral-300 mb-1">Catégorie :</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as any)}
+                    className="w-full bg-black border border-neutral-700 rounded-lg px-2.5 py-2 text-white"
+                  >
+                    <option value="MEDICAL">Urgence Médicale</option>
+                    <option value="WATER">Eau & Climat</option>
+                    <option value="EDUCATION">Éducation</option>
+                    <option value="MATERNITY">Maternité</option>
+                    <option value="DISASTER">Urgence Sinistrés</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold block text-neutral-300 mb-1">Localisation :</label>
+                <input
+                  type="text"
+                  required
+                  value={newCity}
+                  onChange={(e) => setNewCity(e.target.value)}
+                  placeholder="Ex: Cotonou, Bénin"
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold block text-neutral-300 mb-1">Histoire de la cause :</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newStory}
+                  onChange={(e) => setNewStory(e.target.value)}
+                  placeholder="Expliquez la situation, le devis hospitalier ou associatif..."
+                  className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-white text-black py-3 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
+              >
+                Publier la vidéo dans le fil
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 8 : CONSOLE D'ADMINISTRATION GÉNÉRALE (POUR ADMIN) */}
+      {showAdminModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <div>
+                <h3 className="font-bold text-sm">Console d&apos;Administration</h3>
+                <span className="text-[10px] text-neutral-400">
+                  {currentUser?.displayName} (SUPER_ADMIN)
                 </span>
               </div>
-              <button onClick={() => setShowAdminModal(false)} className="text-neutral-500 text-sm">
+              <button onClick={() => setShowAdminModal(false)} className="text-neutral-400 text-sm">
                 ✕
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
-                <div className="p-3 bg-surface-muted rounded-xl border border-surface-border">
-                  <div className="text-neutral-500">Dossiers KYC en attente</div>
-                  <div className="text-lg font-bold">12</div>
+                <div className="p-3 bg-black rounded-xl border border-neutral-800">
+                  <div className="text-neutral-400">Dossiers KYC</div>
+                  <div className="text-lg font-bold text-white">12</div>
                 </div>
-                <div className="p-3 bg-surface-muted rounded-xl border border-surface-border">
-                  <div className="text-neutral-500">Demandes de certification (5%)</div>
-                  <div className="text-lg font-bold">4</div>
-                </div>
-                <div className="p-3 bg-surface-muted rounded-xl border border-surface-border">
-                  <div className="text-neutral-500">Retraits à double approbation</div>
-                  <div className="text-lg font-bold">2</div>
-                </div>
-                <div className="p-3 bg-surface-muted rounded-xl border border-surface-border">
-                  <div className="text-neutral-500">Signalements modération</div>
-                  <div className="text-lg font-bold text-red-600">1</div>
+                <div className="p-3 bg-black rounded-xl border border-neutral-800">
+                  <div className="text-neutral-400">Retraits &gt; 1M F</div>
+                  <div className="text-lg font-bold text-emerald-400">2</div>
                 </div>
               </div>
 
-              <div className="border border-surface-border rounded-xl p-3 space-y-2">
-                <div className="font-semibold text-neutral-700">File de double approbation (&gt; 1 000 000 FCFA) :</div>
-                <div className="bg-surface-muted p-2.5 rounded-lg flex justify-between items-center text-[11px]">
+              <div className="border border-neutral-800 rounded-xl p-3 space-y-2 bg-black/40">
+                <div className="font-semibold text-neutral-300">File de double approbation retraits :</div>
+                <div className="p-2 rounded bg-neutral-900 flex justify-between items-center text-[11px]">
                   <div>
-                    <span className="font-bold text-foreground">Dr. Mamadou Diallo</span>
-                    <span className="text-neutral-500 block">Cagnotte Aminata • 2 500 000 FCFA</span>
+                    <span className="font-bold text-white">Dr. Mamadou Diallo</span>
+                    <span className="text-neutral-500 block">2 500 000 FCFA</span>
                   </div>
                   <button
-                    onClick={() => alert("Approbation validée par Quentin DAVAKAN (SUPER_ADMIN). Écriture débit ledger exécutée.")}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-bold"
+                    onClick={() => {
+                      alert("Virement approuvé par l'administrateur général.");
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded font-bold"
                   >
-                    Valider le virement
+                    Valider
                   </button>
                 </div>
               </div>
 
-              <div className="border border-surface-border rounded-xl p-3 space-y-2">
-                <div className="font-semibold text-neutral-700">Sécurité & Piste d&apos;Audit Append-Only :</div>
-                <p className="text-neutral-500 text-[11px] leading-relaxed">
-                  Toutes les actions administratives, validations KYC et approbations financières sont consignées
-                  de façon inaltérable dans la table `audit_logs`.
-                </p>
-              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full border border-neutral-800 py-2 rounded-xl text-neutral-400 hover:text-white text-xs"
+              >
+                Se déconnecter
+              </button>
             </div>
           </div>
         </div>
