@@ -20,12 +20,14 @@ async function main() {
 
   console.log("\n3. Rôles et comptes d'administration configurés :");
   const testUsers = [
+    { username: "quentin_davakan", role: "SUPER_ADMIN", email: "yekpondafe@gmail.com", phone: "+2290195153177", name: "Quentin DAVAKAN" },
+    { username: "arminel_nouatin", role: "USER", email: "arminellenouation@gmail.com", phone: "+2290196480550", name: "Arminel NOUATIN" },
     { username: "superadmin", role: "SUPER_ADMIN", email: "admin@charityy.org" },
     { username: "moderator", role: "MODERATOR", email: "mod@charityy.org" },
     { username: "verifier", role: "VERIFIER", email: "verifier@charityy.org" },
     { username: "finance", role: "FINANCE", email: "finance@charityy.org" },
-    { username: "creator_amadou", role: "CREATOR", email: "amadou@example.com" },
-    { username: "donor_aicha", role: "USER", email: "aicha@example.com" },
+    { username: "creator_diallo", role: "CREATOR", email: "diallo@hospital.ci" },
+    { username: "donor_awa", role: "USER", email: "donateur@charityy.org" },
   ];
 
   for (const user of testUsers) {

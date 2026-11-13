@@ -77,10 +77,46 @@ function initDefaultUsers() {
       updatedAt: new Date(),
     };
 
+    // Compte Administrateur Général de l'application (Quentin DAVAKAN)
+    const quentinAdmin: StoredUser = {
+      id: "usr_quentin_davakan",
+      username: "quentin_davakan",
+      displayName: "Quentin DAVAKAN",
+      email: "yekpondafe@gmail.com",
+      phone: "+2290195153177",
+      roles: ["SUPER_ADMIN", "ADMIN", "FINANCE", "VERIFIER"],
+      kycStatus: "APPROVED",
+      countryCode: "BJ",
+      city: "Cotonou",
+      locale: "fr",
+      passwordHash: hashPassword("CharityyBoss3NAtiposy@"),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Compte Utilisateur Citoyen & Porteur Solidaire (Arminel NOUATIN)
+    const arminelUser: StoredUser = {
+      id: "usr_arminel_nouatin",
+      username: "arminel_nouatin",
+      displayName: "Arminel NOUATIN",
+      email: "arminellenouation@gmail.com",
+      phone: "+2290196480550",
+      roles: ["USER", "CREATOR"],
+      kycStatus: "APPROVED",
+      countryCode: "BJ",
+      city: "Cotonou",
+      locale: "fr",
+      passwordHash: hashPassword("DjetoDVK21"),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     memoryUsers.set(adminUser.id, adminUser);
     memoryUsers.set(verifierUser.id, verifierUser);
     memoryUsers.set(creatorUser.id, creatorUser);
     memoryUsers.set(donorUser.id, donorUser);
+    memoryUsers.set(quentinAdmin.id, quentinAdmin);
+    memoryUsers.set(arminelUser.id, arminelUser);
   }
 }
 
@@ -92,11 +128,16 @@ export function findUserById(id: string): StoredUser | undefined {
 
 export function findUserByIdentifier(identifier: string): StoredUser | undefined {
   const norm = identifier.trim().toLowerCase();
+  const cleanPhone = identifier.replace(/[\s\-\.]/g, "");
+
   for (const user of memoryUsers.values()) {
+    const userCleanPhone = user.phone ? user.phone.replace(/[\s\-\.]/g, "") : null;
     if (
       user.username.toLowerCase() === norm ||
       (user.email && user.email.toLowerCase() === norm) ||
-      (user.phone && user.phone === identifier.trim())
+      (user.phone && user.phone === identifier.trim()) ||
+      (userCleanPhone && userCleanPhone === cleanPhone) ||
+      (userCleanPhone && cleanPhone.length >= 8 && userCleanPhone.endsWith(cleanPhone))
     ) {
       return user;
     }

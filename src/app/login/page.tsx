@@ -171,7 +171,7 @@ export default function LoginPage() {
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Ex: donateur@charityy.org ou +225 01020304"
+              placeholder="Ex: yekpondafe@gmail.com ou +2290195153177"
               className="w-full bg-background border border-surface-border rounded-lg px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
             />
           </div>
@@ -232,14 +232,31 @@ export default function LoginPage() {
             Cliquez sur un profil pour tester l&apos;application avec les différents rôles :
           </p>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
-              onClick={() => handleQuickLogin("donateur@charityy.org", "Donateur2026!")}
-              className="p-2.5 text-left border border-surface-border rounded-lg bg-surface-muted hover:border-foreground/40 transition"
+              onClick={() => handleQuickLogin("yekpondafe@gmail.com", "CharityyBoss3NAtiposy@")}
+              className="p-3 text-left border-2 border-foreground/30 rounded-xl bg-surface-muted hover:border-foreground transition group"
             >
-              <div className="text-xs font-bold text-foreground">👤 Citoyenne Donatrice</div>
-              <div className="text-[10px] text-neutral-500">Awa Traoré • Rôle USER</div>
+              <div className="text-xs font-bold text-foreground flex items-center justify-between">
+                <span>👑 Quentin DAVAKAN</span>
+                <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.2 rounded font-mono">ADMIN</span>
+              </div>
+              <div className="text-[10px] text-neutral-500 pt-0.5">Admin Général • Tout pouvoir</div>
+              <div className="text-[9px] text-neutral-400 font-mono">yekpondafe@gmail.com</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleQuickLogin("arminellenouation@gmail.com", "DjetoDVK21")}
+              className="p-3 text-left border-2 border-foreground/30 rounded-xl bg-surface-muted hover:border-foreground transition group"
+            >
+              <div className="text-xs font-bold text-foreground flex items-center justify-between">
+                <span>👤 Arminel NOUATIN</span>
+                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-mono">USER</span>
+              </div>
+              <div className="text-[10px] text-neutral-500 pt-0.5">Citoyen Bénin • Don & Cagnotte</div>
+              <div className="text-[9px] text-neutral-400 font-mono">arminellenouation@gmail.com</div>
             </button>
 
             <button
@@ -247,8 +264,8 @@ export default function LoginPage() {
               onClick={() => handleQuickLogin("diallo@hospital.ci", "DialloCharityy2026!")}
               className="p-2.5 text-left border border-surface-border rounded-lg bg-surface-muted hover:border-foreground/40 transition"
             >
-              <div className="text-xs font-bold text-foreground">🩺 Médecin Porteur</div>
-              <div className="text-[10px] text-neutral-500">Dr. Diallo • Rôle CREATOR</div>
+              <div className="text-xs font-bold text-foreground">🩺 Dr. Mamadou Diallo</div>
+              <div className="text-[10px] text-neutral-500">Porteur Médical • Rôle CREATOR</div>
             </button>
 
             <button
@@ -256,17 +273,8 @@ export default function LoginPage() {
               onClick={() => handleQuickLogin("conformite@charityy.org", "VerifierCharityy2026!")}
               className="p-2.5 text-left border border-surface-border rounded-lg bg-surface-muted hover:border-foreground/40 transition"
             >
-              <div className="text-xs font-bold text-foreground">🛡️ Conformité KYC</div>
-              <div className="text-[10px] text-neutral-500">Agent KYC • Rôle VERIFIER</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickLogin("admin@charityy.org", "AdminCharityy2026!")}
-              className="p-2.5 text-left border border-surface-border rounded-lg bg-surface-muted hover:border-foreground/40 transition"
-            >
-              <div className="text-xs font-bold text-foreground">🏛️ Super Administrateur</div>
-              <div className="text-[10px] text-neutral-500">Admin Finance • Rôle ADMIN</div>
+              <div className="text-xs font-bold text-foreground">🛡️ Conformité & KYC</div>
+              <div className="text-[10px] text-neutral-500">Agent Vérificateur • Rôle VERIFIER</div>
             </button>
           </div>
         </div>
