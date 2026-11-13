@@ -7,7 +7,7 @@ import { computeSignatureProgress } from "@/modules/signatures/service";
 import { formatCurrency } from "@/lib/currency";
 import { DEFAULT_GIFT_CATALOG, processGiftTransaction } from "@/modules/lives/service";
 
-// Interface des publications vidéo courtes & cagnottes du fil TikTok
+// Interface des publications vidéo courtes & cagnottes solidaires TikTok
 interface CampaignItem {
   id: string;
   uniqueKey?: string;
@@ -36,9 +36,10 @@ interface CampaignItem {
   commentsCount: number;
   sharesCount: number;
   commentsList: Array<{ user: string; text: string; time: string }>;
+  isFollowing?: boolean;
 }
 
-// Données initiales pour le fil vidéo court
+// Données initiales des causes du fil TikTok
 const BASE_CAMPAIGNS: CampaignItem[] = [
   {
     id: "camp_urgence_diallo",
@@ -194,8 +195,19 @@ const BASE_CAMPAIGNS: CampaignItem[] = [
   },
 ];
 
+// Liste des comptes suivis / suggérés (comme sur la barre latérale TikTok)
+const SUGGESTED_ACCOUNTS = [
+  { handle: "princesse_ataroi", name: "Radiaprincesse_ataroi", verified: true, role: "Ambassadrice Santé" },
+  { handle: "dr_diallo", name: "Dr. Mamadou Diallo", verified: true, role: "Chirurgien CHU" },
+  { handle: "noirdabordoff", name: "Noir D'Abord", verified: true, role: "Collectif Solidaire" },
+  { handle: "arminel_benin", name: "Arminel NOUATIN", verified: true, role: "Forages Bénin" },
+  { handle: "quentindavakan", name: "Quentin DAVAKAN", verified: true, role: "Super-Admin Fondateur" },
+  { handle: "karlchill02", name: "Karlchill", verified: false, role: "Créateur Citoyen" },
+  { handle: "maitrevoyant43", name: "Maitre Solidaire", verified: false, role: "Bénévole Terrain" },
+];
+
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<"for_you" | "local" | "urgencies" | "lives">("for_you");
+  const [activeTab, setActiveTab] = useState<"for_you" | "explore" | "following" | "friends" | "dramas" | "lives">("for_you");
   const [feedItems, setFeedItems] = useState<CampaignItem[]>(() =>
     BASE_CAMPAIGNS.map((item, idx) => ({ ...item, uniqueKey: `${item.id}_${idx}` }))
   );
@@ -203,6 +215,7 @@ export default function HomePage() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [activeToast, setActiveToast] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // État utilisateur connecté
   const [currentUser, setCurrentUser] = useState<{
@@ -213,15 +226,21 @@ export default function HomePage() {
     email?: string | null;
   } | null>(null);
 
-  // Modales
+  // Modales et écrans dédiés
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showUserSpaceModal, setShowUserSpaceModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showInboxModal, setShowInboxModal] = useState(false);
+  const [showExploreModal, setShowExploreModal] = useState(false);
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showLiveModal, setShowLiveModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  // Onglet interne de profil
+  const [profileTab, setProfileTab] = useState<"campaigns" | "donations" | "likes" | "kyc">("campaigns");
 
   // Formulaire d'authentification sécurisé (aucun mot de passe ni identifiant public)
   const [authIdentifier, setAuthIdentifier] = useState("");
@@ -245,9 +264,9 @@ export default function HomePage() {
   const [selectedMethod, setSelectedMethod] = useState<"mobile_money" | "card">("mobile_money");
   const [donationSuccess, setDonationSuccess] = useState(false);
 
-  // Live & Cadeaux
+  // Live & Cadeaux Agora
   const [chatMessages, setChatMessages] = useState<string[]>([
-    "Bienvenue dans le direct solidaire.",
+    "Bienvenue dans le direct solidaire CHARITYY.",
     "Merci à tous les donateurs et signataires !",
   ]);
   const [liveChatInput, setLiveChatInput] = useState("");
@@ -279,8 +298,7 @@ export default function HomePage() {
   const handleScroll = () => {
     if (!feedRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = feedRef.current;
-    if (scrollTop + clientHeight >= scrollHeight - 300) {
-      // Duplication et génération infinie continue façon TikTok
+    if (scrollTop + clientHeight >= scrollHeight - 350) {
       setFeedItems((prev) => {
         const nextBatch = BASE_CAMPAIGNS.map((c, i) => ({
           ...c,
@@ -296,6 +314,9 @@ export default function HomePage() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       setCurrentUser(null);
+      setProfileDropdownOpen(false);
+      setShowProfileModal(false);
+      setShowAdminModal(false);
       showNotification("Vous êtes déconnecté.");
     } catch {}
   };
@@ -347,6 +368,14 @@ export default function HomePage() {
         return item;
       })
     );
+  };
+
+  // Follow dynamique
+  const handleToggleFollow = (handle: string) => {
+    setFeedItems((prev) =>
+      prev.map((c) => (c.handle === handle ? { ...c, isFollowing: !c.isFollowing } : c))
+    );
+    showNotification(`Abonnement mis à jour pour @${handle}`);
   };
 
   // Commentaire dynamique
@@ -451,10 +480,10 @@ export default function HomePage() {
     setShowCreateCampaignModal(false);
     setNewTitle("");
     setNewStory("");
-    showNotification("🎉 Votre cagnotte a été publiée dans le fil TikTok !");
+    showNotification("🎉 Votre vidéo et cagnotte ont été publiées sur TikTok CHARITYY !");
   };
 
-  // Envoyer un cadeau en direct
+  // Cadeau live Agora
   const handleSendGift = (giftId: string) => {
     const result = processGiftTransaction({
       senderId: currentUser?.id || "usr_guest",
@@ -484,11 +513,20 @@ export default function HomePage() {
     setLiveChatInput("");
   };
 
-  // Filtrage par onglet
+  // Filtrage selon l'onglet TikTok sélectionné
   const filteredFeed = feedItems.filter((c) => {
-    if (activeTab === "urgencies") return c.isUrgent;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (
+        c.title.toLowerCase().includes(q) ||
+        c.story.toLowerCase().includes(q) ||
+        c.authorName.toLowerCase().includes(q) ||
+        c.city.toLowerCase().includes(q)
+      );
+    }
     if (activeTab === "lives") return c.hasLive;
-    if (activeTab === "local") return c.city.includes("Abidjan") || c.city.includes("Bénin") || c.city.includes("Cotonou");
+    if (activeTab === "following") return c.isFollowing;
+    if (activeTab === "dramas") return c.category === "MEDICAL" || c.category === "DISASTER";
     return true;
   });
 
@@ -498,78 +536,173 @@ export default function HomePage() {
     hasEligibleCreator: true,
   });
 
-  const signatureProgress = computeSignatureProgress(
-    Array.from({ length: selectedCampaign.signaturesCount }, (_, i) => ({
-      id: `sig_${i}`,
-      campaignId: selectedCampaign.id,
-      signerId: `usr_${i}`,
-      kind: (i < 40 ? "RELATIVE" : i < 70 ? "RESOURCE_PERSON" : "COMMUNITY") as any,
-      createdAt: new Date(),
-    }))
-  );
-
   const isAdmin = currentUser?.roles.some((r) => ["SUPER_ADMIN", "ADMIN", "FINANCE", "VERIFIER"].includes(r));
 
   return (
-    <div className="relative w-full h-[100dvh] max-w-md mx-auto bg-black text-white overflow-hidden flex flex-col select-none shadow-2xl">
+    <div className="relative w-full min-h-screen bg-black text-white flex flex-col font-sans select-none overflow-x-hidden">
       {/* TOAST FLOTTANT */}
       {activeToast && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-white/90 text-black text-xs font-bold px-4 py-2 rounded-full shadow-lg backdrop-blur animate-fade-in">
-          {activeToast}
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[100] bg-white text-black text-xs font-bold px-5 py-2.5 rounded-full shadow-2xl backdrop-blur animate-fade-in flex items-center gap-2">
+          <span>🔔</span> {activeToast}
         </div>
       )}
 
-      {/* 1. EN-TÊTE TRANSPARENT FLOTTANT SUR LA VIDÉO FAÇON TIKTOK */}
-      <header className="absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 via-black/40 to-transparent px-3 py-2.5 flex items-center justify-between pointer-events-auto">
-        <div className="flex items-center gap-1.5">
-          <span className="font-extrabold tracking-tighter text-base text-white">CHARITYY</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+      {/* ========================================================================= */}
+      {/* 1. BARRE SUPÉRIEURE TIKTOK POUR ORDINATEUR (DESKTOP NAVBAR >= 768px)       */}
+      {/* ========================================================================= */}
+      <header className="hidden md:flex h-16 w-full fixed top-0 left-0 bg-black/95 backdrop-blur border-b border-neutral-850 z-50 items-center justify-between px-6">
+        {/* LOGO CHARITYY (Style TikTok) */}
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="relative font-black text-2xl tracking-tighter text-white flex items-center">
+              <span className="text-[#25F4EE] mr-0.5 group-hover:animate-pulse">♪</span>
+              <span>CHARITYY</span>
+              <span className="text-[#FE2C55] text-xs font-mono ml-1 px-1.5 py-0.5 rounded bg-[#FE2C55]/20 border border-[#FE2C55]/40">
+                LIVE
+              </span>
+            </div>
+          </Link>
         </div>
 
-        {/* ONGLETS FLOTTANTS CENTRAUX */}
-        <nav className="flex items-center gap-3 text-xs font-bold">
-          <button
-            onClick={() => setActiveTab("for_you")}
-            className={`transition ${activeTab === "for_you" ? "text-white border-b-2 border-white pb-0.5" : "text-neutral-400 hover:text-white"}`}
-          >
-            Pour toi
-          </button>
-          <button
-            onClick={() => setActiveTab("local")}
-            className={`transition ${activeTab === "local" ? "text-white border-b-2 border-white pb-0.5" : "text-neutral-400 hover:text-white"}`}
-          >
-            Local
-          </button>
-          <button
-            onClick={() => setActiveTab("urgencies")}
-            className={`transition ${activeTab === "urgencies" ? "text-red-400 border-b-2 border-red-500 pb-0.5 font-extrabold" : "text-neutral-400 hover:text-white"}`}
-          >
-            Urgences
-          </button>
-          <button
-            onClick={() => setActiveTab("lives")}
-            className={`transition ${activeTab === "lives" ? "text-red-500 border-b-2 border-red-500 pb-0.5 font-extrabold flex items-center gap-1" : "text-neutral-400 hover:text-white"}`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            Lives
-          </button>
-        </nav>
-
-        {/* ACCÈS COMPTE / ESPACE CONNECTÉ */}
-        <div>
-          {currentUser ? (
+        {/* BARRE DE RECHERCHE CENTRALE TIKTOK */}
+        <div className="w-[320px] lg:w-[460px] relative">
+          <div className="bg-neutral-900 hover:bg-neutral-850 focus-within:bg-neutral-850 border border-neutral-700/80 focus-within:border-neutral-400 rounded-full flex items-center pl-4 pr-1.5 py-1.5 transition">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher des causes, créateurs, urgences..."
+              className="bg-transparent text-xs text-white placeholder-neutral-400 flex-1 focus:outline-none"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="text-neutral-500 hover:text-white text-xs px-2">
+                ✕
+              </button>
+            )}
+            <span className="w-px h-5 bg-neutral-700 mx-1.5" />
             <button
-              onClick={() => (isAdmin ? setShowAdminModal(true) : setShowUserSpaceModal(true))}
-              className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow backdrop-blur transition ${
-                isAdmin ? "bg-red-600/90 hover:bg-red-600 text-white" : "bg-emerald-600/90 hover:bg-emerald-600 text-white"
-              }`}
+              onClick={() => showNotification("Recherche active")}
+              className="w-8 h-8 rounded-full hover:bg-neutral-800 flex items-center justify-center text-neutral-400 hover:text-white transition"
+              title="Rechercher"
             >
-              <span>{isAdmin ? "👑 Admin" : "👤 Espace"}</span>
+              🔍
             </button>
+          </div>
+        </div>
+
+        {/* ACTIONS DE DROITE TIKTOK (Importer, Messages, Activité, Profil) */}
+        <div className="flex items-center gap-3.5">
+          {/* BOUTON + IMPORTER (Style TikTok Studio) */}
+          <button
+            onClick={() => {
+              if (!currentUser) setShowAuthModal(true);
+              else setShowCreateCampaignModal(true);
+            }}
+            className="flex items-center gap-2 border border-neutral-700 hover:bg-neutral-800/90 text-white font-bold text-xs px-4 py-2 rounded-md transition shadow-sm"
+          >
+            <span className="text-sm font-black">+</span>
+            <span>Importer</span>
+          </button>
+
+          {/* MESSAGES (Badge 99+) */}
+          <button
+            onClick={() => setShowInboxModal(true)}
+            className="relative p-2 rounded-full hover:bg-neutral-850 text-neutral-300 hover:text-white transition"
+            title="Messages"
+          >
+            <span className="text-xl">✈️</span>
+            <span className="absolute -top-1 -right-1 bg-[#FE2C55] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow">
+              99+
+            </span>
+          </button>
+
+          {/* ACTIVITÉ / BOÎTE DE RÉCEPTION (Badge 99+) */}
+          <button
+            onClick={() => setShowInboxModal(true)}
+            className="relative p-2 rounded-full hover:bg-neutral-850 text-neutral-300 hover:text-white transition"
+            title="Activité"
+          >
+            <span className="text-xl">💬</span>
+            <span className="absolute -top-1 -right-1 bg-[#FE2C55] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow">
+              99+
+            </span>
+          </button>
+
+          {/* BOUTON PROFIL / CONNEXION */}
+          {currentUser ? (
+            <div className="relative">
+              <button
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="flex items-center gap-2 p-1 rounded-full hover:bg-neutral-850 transition"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-[#FE2C55] text-white flex items-center justify-center font-bold text-xs shadow-md border border-white/20">
+                  {currentUser.displayName.charAt(0)}
+                </div>
+              </button>
+
+              {/* Menu déroulant profil */}
+              {profileDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl p-2 z-50 animate-scale-in space-y-1">
+                  <div className="p-2 border-b border-neutral-800">
+                    <div className="font-bold text-xs text-white flex items-center justify-between">
+                      <span>{currentUser.displayName}</span>
+                      {isAdmin && (
+                        <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-mono font-bold">
+                          ADMIN
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-neutral-400 font-mono">@{currentUser.username}</div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      setShowProfileModal(true);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-200"
+                  >
+                    <span>👤</span> Voir le profil
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      setShowProfileModal(true);
+                      setProfileTab("donations");
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-200"
+                  >
+                    <span>💰</span> Portefeuille Solidaire ({formatCurrency(userWalletBalance, "XOF")})
+                  </button>
+
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        setShowAdminModal(true);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-400 font-bold flex items-center gap-2.5"
+                    >
+                      <span>👑</span> Console Super-Admin
+                    </button>
+                  )}
+
+                  <div className="border-t border-neutral-800 pt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center gap-2.5"
+                    >
+                      <span>🚪</span> Déconnexion
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <button
               onClick={() => setShowAuthModal(true)}
-              className="text-[11px] font-bold bg-white text-black px-3 py-1 rounded-full hover:bg-neutral-200 transition shadow"
+              className="bg-[#FE2C55] hover:bg-[#e0264b] text-white font-bold text-xs px-5 py-2 rounded-md shadow-md transition"
             >
               Connexion
             </button>
@@ -577,220 +710,988 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* 2. FIL VIDÉO VERTICAL INFINI AVEC DÉFILEMENT MAGNÉTIQUE (SNAP TIKTOK) */}
-      <div
-        ref={feedRef}
-        onScroll={handleScroll}
-        className="flex-1 w-full h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar relative"
-      >
-        {filteredFeed.map((camp) => {
-          const progressPercent = Math.min(100, Math.round((Number(camp.collectedMinor) / Number(camp.goalMinor)) * 100));
-
-          return (
-            <section
-              key={camp.uniqueKey}
-              className="h-full w-full snap-start snap-always relative flex flex-col justify-between overflow-hidden bg-neutral-950"
+      {/* ========================================================================= */}
+      {/* 2. BARRE LATÉRALE TIKTOK POUR ORDINATEUR (DESKTOP SIDEBAR >= 768px)       */}
+      {/* ========================================================================= */}
+      <aside className="hidden md:flex w-[240px] xl:w-[260px] fixed top-16 left-0 bottom-0 bg-black border-r border-neutral-850 p-3 overflow-y-auto flex-col justify-between text-white z-40 select-none no-scrollbar">
+        <div className="space-y-4">
+          {/* Navigation principale */}
+          <nav className="space-y-1 text-sm font-bold">
+            <button
+              onClick={() => setActiveTab("for_you")}
+              className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-lg transition ${
+                activeTab === "for_you" ? "text-[#FE2C55] bg-neutral-900" : "text-white hover:bg-neutral-900"
+              }`}
             >
-              {/* ARRIÈRE-PLAN VIDÉO LÉGER & FLUIDE (SIMULÉ, NON CHARGÉ POUR ÉCONOMIE DE DONNÉES) */}
-              <div
-                onClick={() => setIsPlaying(!isPlaying)}
-                className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient} flex items-center justify-center cursor-pointer`}
-              >
-                {/* Décor cinématique d'onde vidéo */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/5 via-transparent to-black/60 opacity-80" />
-                <div className="absolute top-20 right-4 text-[10px] font-mono bg-black/50 text-neutral-400 px-2 py-0.5 rounded-full border border-white/10">
-                  {camp.durationLabel} • Mode Léger
-                </div>
+              <span className="text-xl">🏠</span>
+              <span>Pour toi</span>
+            </button>
 
-                {!isPlaying && (
-                  <div className="w-16 h-16 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-2xl text-white backdrop-blur shadow-2xl animate-scale-in">
-                    ▶
-                  </div>
-                )}
+            <button
+              onClick={() => {
+                setActiveTab("explore");
+                setShowExploreModal(true);
+              }}
+              className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-lg transition ${
+                activeTab === "explore" ? "text-[#FE2C55] bg-neutral-900" : "text-white hover:bg-neutral-900"
+              }`}
+            >
+              <span className="text-xl">🧭</span>
+              <span>Explorer</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("following")}
+              className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-lg transition ${
+                activeTab === "following" ? "text-[#FE2C55] bg-neutral-900" : "text-white hover:bg-neutral-900"
+              }`}
+            >
+              <span className="text-xl">👥</span>
+              <span>Suivis</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("friends")}
+              className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-lg transition ${
+                activeTab === "friends" ? "text-[#FE2C55] bg-neutral-900" : "text-white hover:bg-neutral-900"
+              }`}
+            >
+              <span className="text-xl">🤝</span>
+              <span>Amis</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("dramas")}
+              className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-lg transition ${
+                activeTab === "dramas" ? "text-[#FE2C55] bg-neutral-900" : "text-white hover:bg-neutral-900"
+              }`}
+            >
+              <span className="text-xl">🎭</span>
+              <span>Mini-dramas & Causes</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("lives")}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition ${
+                activeTab === "lives" ? "text-[#FE2C55] bg-neutral-900" : "text-white hover:bg-neutral-900"
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <span className="text-xl text-red-500">📹</span>
+                <span>LIVE</span>
               </div>
+              <span className="bg-[#FE2C55] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                99+
+              </span>
+            </button>
 
-              {/* OVERLAY D'INFORMATIONS SUPÉRIEURES */}
-              <div className="relative z-10 pt-14 px-4 flex justify-between items-start pointer-events-none">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white">
-                    {camp.categoryLabel}
-                  </span>
-                  {camp.isCertified && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/80 text-white flex items-center gap-1 shadow">
-                      ✓ Certifiée
-                    </span>
-                  )}
-                </div>
+            {/* BOUTON PROFIL DANS LA SIDEBAR DESKTOP */}
+            <button
+              onClick={() => {
+                if (!currentUser) setShowAuthModal(true);
+                else setShowProfileModal(true);
+              }}
+              className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-white hover:bg-neutral-900 transition"
+            >
+              <span className="text-xl">👤</span>
+              <span>Profil</span>
+            </button>
+          </nav>
 
-                {camp.hasLive && (
-                  <button
-                    onClick={() => {
-                      setSelectedCampaign(camp);
-                      setShowLiveModal(true);
-                    }}
-                    className="pointer-events-auto bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg animate-bounce"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    LIVE ({camp.liveViewers})
-                  </button>
-                )}
-              </div>
+          <div className="h-px bg-neutral-800" />
 
-              {/* COLONNE D'ACTIONS LATÉRALE DROITE (STYLE TIKTOK) */}
-              <div className="absolute right-2.5 bottom-28 z-30 flex flex-col items-center gap-3.5 pointer-events-auto">
-                {/* Avatar Auteur */}
-                <div className="relative mb-1">
-                  <div className="w-10 h-10 rounded-full border-2 border-white bg-neutral-800 flex items-center justify-center text-xs font-bold shadow-md">
-                    {camp.authorName.charAt(0)}
-                  </div>
-                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] flex items-center justify-center font-bold">
-                    +
-                  </div>
-                </div>
-
-                {/* Like */}
+          {/* Section Comptes suivis / Suggérés (exactement selon votre compte TikTok) */}
+          <div className="space-y-2">
+            <div className="px-3 text-xs font-semibold text-neutral-400">Comptes suivis</div>
+            <div className="space-y-1">
+              {SUGGESTED_ACCOUNTS.map((acc) => (
                 <button
-                  onClick={() => handleLike(camp.uniqueKey || camp.id)}
-                  className="flex flex-col items-center gap-0.5 group"
+                  key={acc.handle}
+                  onClick={() => setSearchQuery(acc.handle)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-neutral-900 text-left transition group"
                 >
-                  <div className={`w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-xl transition transform active:scale-125 ${
-                    camp.isLiked ? "text-red-500" : "text-white"
-                  }`}>
-                    {camp.isLiked ? "❤️" : "🤍"}
+                  <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold shrink-0">
+                    {acc.name.charAt(0)}
                   </div>
-                  <span className="text-[10px] font-bold text-white shadow-sm">
-                    {camp.likesCount >= 1000 ? `${(camp.likesCount / 1000).toFixed(1)}k` : camp.likesCount}
-                  </span>
-                </button>
-
-                {/* Commentaires */}
-                <button
-                  onClick={() => {
-                    setSelectedCampaign(camp);
-                    setShowCommentsModal(true);
-                  }}
-                  className="flex flex-col items-center gap-0.5"
-                >
-                  <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-white transition active:scale-110">
-                    💬
-                  </div>
-                  <span className="text-[10px] font-bold text-white shadow-sm">{camp.commentsCount}</span>
-                </button>
-
-                {/* Signatures citoyennes */}
-                <button
-                  onClick={() => {
-                    setSelectedCampaign(camp);
-                    setShowSignatureModal(true);
-                  }}
-                  className="flex flex-col items-center gap-0.5"
-                >
-                  <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-amber-400 transition active:scale-110">
-                    ✍️
-                  </div>
-                  <span className="text-[10px] font-bold text-amber-300 shadow-sm">{camp.signaturesCount}/100</span>
-                </button>
-
-                {/* Partage */}
-                <button
-                  onClick={() => {
-                    navigator.clipboard?.writeText(window.location.href);
-                    showNotification("↗️ Lien de la cause copié dans le presse-papiers !");
-                  }}
-                  className="flex flex-col items-center gap-0.5"
-                >
-                  <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-white transition active:scale-110">
-                    ↗️
-                  </div>
-                  <span className="text-[10px] font-bold text-white shadow-sm">{camp.sharesCount}</span>
-                </button>
-
-                {/* Son */}
-                <button
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="w-8 h-8 rounded-full bg-black/40 backdrop-blur border border-white/10 flex items-center justify-center text-xs text-neutral-300"
-                >
-                  {isMuted ? "🔇" : "🔊"}
-                </button>
-              </div>
-
-              {/* OVERLAY D'INFORMATIONS DU BAS (SUR LA VIDÉO FAÇON TIKTOK) */}
-              <div className="relative z-20 pb-4 px-4 pr-16 bg-gradient-to-t from-black via-black/80 to-transparent pt-12 space-y-2 pointer-events-auto">
-                {/* Auteur & Ville */}
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-white">@{camp.handle}</span>
-                  <span className="text-[11px] text-neutral-300">• 📍 {camp.city}</span>
-                </div>
-
-                {/* Titre et description compacte */}
-                <h3 className="font-bold text-xs text-white leading-snug line-clamp-2">
-                  {camp.title}
-                </h3>
-                <p className="text-[11px] text-neutral-300 line-clamp-2 leading-relaxed">
-                  {camp.story} <span className="text-sky-400 font-semibold">#solidarite #charityy #don</span>
-                </p>
-
-                {/* Barre de collecte financière transparente */}
-                <div className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl border border-white/15 space-y-1.5 shadow-lg">
-                  <div className="flex justify-between items-baseline text-[11px]">
-                    <div>
-                      <span className="font-extrabold text-emerald-400 font-mono text-xs">
-                        {formatCurrency(camp.collectedMinor, camp.currency)}
-                      </span>
-                      <span className="text-neutral-400"> / {formatCurrency(camp.goalMinor, camp.currency)}</span>
+                  <div className="truncate flex-1">
+                    <div className="text-xs font-bold text-white truncate flex items-center gap-1">
+                      <span>{acc.name}</span>
+                      {acc.verified && <span className="text-sky-400 text-[10px]">✓</span>}
                     </div>
-                    <span className="font-mono font-bold text-white text-[11px]">{progressPercent}%</span>
+                    <div className="text-[10px] text-neutral-400 truncate font-mono">@{acc.handle}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => showNotification("Tous les comptes solidaires certifiés affichés")}
+              className="px-3 text-xs font-bold text-[#FE2C55] hover:underline"
+            >
+              Tout voir
+            </button>
+          </div>
+
+          <div className="h-px bg-neutral-800" />
+
+          {/* Section Découvrir / Hashtags */}
+          <div className="space-y-2 px-3">
+            <div className="text-xs font-semibold text-neutral-400">Découvrir</div>
+            <div className="flex flex-wrap gap-1.5">
+              {["#UrgenceCotonou", "#ChirurgieAminata", "#EauPotableZe", "#MonerooSolidarite", "#BeninSolidaire"].map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setSearchQuery(tag.replace("#", ""))}
+                  className="text-[10px] bg-neutral-900 border border-neutral-800 hover:border-neutral-600 px-2 py-1 rounded-full text-neutral-300 hover:text-white transition"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer légal desktop */}
+        <div className="pt-4 border-t border-neutral-850 px-3 space-y-1.5 text-[11px] text-neutral-500">
+          <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+            <Link href="/cgu" className="hover:underline">Conditions générales</Link>
+            <Link href="/confidentialite" className="hover:underline">Confidentialité</Link>
+            <span className="hover:underline cursor-pointer">Programme</span>
+            <span className="hover:underline cursor-pointer">Entreprise</span>
+          </div>
+          <div className="text-[10px] text-neutral-600 font-mono pt-1">© 2026 CHARITYY TikTok Solidarité</div>
+        </div>
+      </aside>
+
+      {/* ========================================================================= */}
+      {/* 3. EN-TÊTE MOBILE FLOTTANT (< 768px)                                      */}
+      {/* ========================================================================= */}
+      <header className="md:hidden absolute top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 via-black/30 to-transparent px-4 py-3 flex items-center justify-between pointer-events-auto">
+        {/* BOUTON LIVE MOBILE */}
+        <button
+          onClick={() => setActiveTab("lives")}
+          className="text-xs font-bold text-white flex items-center gap-1 bg-black/40 backdrop-blur px-2.5 py-1 rounded-full border border-white/10"
+        >
+          <span className="w-2 h-2 rounded-full bg-[#FE2C55] animate-pulse" />
+          <span>LIVE</span>
+        </button>
+
+        {/* ONGLETS CENTRAUX FLOTTANTS TIKTOK */}
+        <nav className="flex items-center gap-4 text-xs font-bold">
+          <button
+            onClick={() => setActiveTab("following")}
+            className={`transition ${activeTab === "following" ? "text-white border-b-2 border-white pb-0.5" : "text-neutral-400"}`}
+          >
+            Suivis
+          </button>
+          <button
+            onClick={() => setActiveTab("for_you")}
+            className={`transition ${activeTab === "for_you" ? "text-white border-b-2 border-white pb-0.5" : "text-neutral-400"}`}
+          >
+            Pour toi
+          </button>
+        </nav>
+
+        {/* RECHERCHE MOBILE */}
+        <button
+          onClick={() => setShowExploreModal(true)}
+          className="w-8 h-8 rounded-full bg-black/40 backdrop-blur border border-white/10 flex items-center justify-center text-sm"
+        >
+          🔍
+        </button>
+      </header>
+
+      {/* ========================================================================= */}
+      {/* 4. ZONE PRINCIPALE DU FIL (ADAPTÉE DESKTOP & MOBILE TIKTOK)               */}
+      {/* ========================================================================= */}
+      <main className="flex-1 w-full md:ml-[240px] xl:ml-[260px] md:pt-16 pb-16 md:pb-8 flex flex-col items-center">
+        <div
+          ref={feedRef}
+          onScroll={handleScroll}
+          className="w-full h-[100dvh] md:h-auto md:max-w-2xl overflow-y-scroll md:overflow-visible snap-y snap-mandatory md:snap-none no-scrollbar flex flex-col items-center gap-0 md:gap-8 md:py-6"
+        >
+          {filteredFeed.length === 0 ? (
+            <div className="h-[70vh] flex flex-col items-center justify-center text-center p-6 space-y-3">
+              <span className="text-4xl">🔍</span>
+              <h3 className="font-bold text-base">Aucune cause trouvée</h3>
+              <p className="text-xs text-neutral-400 max-w-xs">
+                Aucune vidéo ne correspond à votre recherche &ldquo;{searchQuery}&rdquo;.
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveTab("for_you");
+                }}
+                className="bg-[#FE2C55] text-white text-xs font-bold px-4 py-2 rounded-full"
+              >
+                Réinitialiser
+              </button>
+            </div>
+          ) : (
+            filteredFeed.map((camp) => {
+              const progressPercent = Math.min(
+                100,
+                Math.round((Number(camp.collectedMinor) / Number(camp.goalMinor)) * 100)
+              );
+
+              return (
+                <article
+                  key={camp.uniqueKey}
+                  className="w-full h-full md:h-auto snap-start snap-always relative flex flex-col justify-between overflow-hidden bg-black md:bg-neutral-950 md:rounded-2xl md:p-4 md:border md:border-neutral-850 shadow-2xl"
+                >
+                  {/* EN-TÊTE AUTEUR EN VERSION DESKTOP */}
+                  <div className="hidden md:flex items-center justify-between pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-red-500 p-0.5">
+                        <div className="w-full h-full bg-black rounded-full flex items-center justify-center font-bold text-xs">
+                          {camp.authorName.charAt(0)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 font-bold text-sm text-white">
+                          <span>{camp.authorName}</span>
+                          {camp.isCertified && <span className="text-sky-400 text-xs">✓</span>}
+                          <span className="text-[11px] text-neutral-400 font-normal">@{camp.handle}</span>
+                        </div>
+                        <div className="text-[11px] text-neutral-400 flex items-center gap-1.5">
+                          <span>📍 {camp.city}</span>
+                          <span>•</span>
+                          <span className="text-[#25F4EE] font-medium">{camp.categoryLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleFollow(camp.handle)}
+                      className={`text-xs font-bold px-4 py-1.5 rounded-md border transition ${
+                        camp.isFollowing
+                          ? "border-neutral-700 bg-neutral-900 text-neutral-300"
+                          : "border-[#FE2C55] text-[#FE2C55] hover:bg-[#FE2C55]/10"
+                      }`}
+                    >
+                      {camp.isFollowing ? "Abonné" : "Suivre"}
+                    </button>
                   </div>
 
-                  <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
-                      style={{ width: `${progressPercent}%` }}
-                    />
+                  {/* DESCRIPTION / HASHTAGS EN VERSION DESKTOP */}
+                  <div className="hidden md:block pb-2.5 text-xs text-neutral-300">
+                    <span className="font-semibold text-white mr-1.5">{camp.title}</span>
+                    <span>{camp.story}</span>
+                    <span className="text-sky-400 font-medium ml-1.5">#charityy #solidarite #moneroo</span>
+                    <div className="pt-1 text-[11px] text-neutral-400 font-semibold flex items-center gap-1">
+                      <span>♫ son original</span>
+                      <span>-</span>
+                      <span className="truncate">{camp.authorName} Solidaire</span>
+                    </div>
+                  </div>
+
+                  {/* CONTENEUR VIDÉO FAÇON TIKTOK AVEC ACTIONS */}
+                  <div className="relative flex-1 md:flex-initial flex items-center justify-center">
+                    <div className="relative w-full md:w-[350px] lg:w-[380px] h-full md:h-[580px] bg-neutral-900 rounded-none md:rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between">
+                      {/* FOND ANIMÉ VIDÉO LÉGER (NON CHARGÉ POUR BANDE PASSANTE) */}
+                      <div
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        className={`absolute inset-0 bg-gradient-to-b ${camp.bgGradient} flex items-center justify-center cursor-pointer`}
+                      >
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-black/70 opacity-90" />
+                        <div className="absolute top-16 md:top-3 right-3 text-[10px] font-mono bg-black/60 text-neutral-300 px-2 py-0.5 rounded-full border border-white/10">
+                          {camp.durationLabel} • Mode Léger
+                        </div>
+
+                        {!isPlaying && (
+                          <div className="w-16 h-16 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-2xl text-white backdrop-blur shadow-2xl animate-scale-in">
+                            ▶
+                          </div>
+                        )}
+                      </div>
+
+                      {/* BADGES HAUT SUR LA VIDÉO MOBILE */}
+                      <div className="relative z-10 pt-14 md:pt-3 px-4 flex justify-between items-start pointer-events-none">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/50 backdrop-blur border border-white/10 text-white">
+                            {camp.categoryLabel}
+                          </span>
+                          {camp.isCertified && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/80 text-white flex items-center gap-1 shadow">
+                              ✓ Certifiée
+                            </span>
+                          )}
+                        </div>
+
+                        {camp.hasLive && (
+                          <button
+                            onClick={() => {
+                              setSelectedCampaign(camp);
+                              setShowLiveModal(true);
+                            }}
+                            className="pointer-events-auto bg-[#FE2C55] text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-lg animate-bounce"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                            LIVE ({camp.liveViewers})
+                          </button>
+                        )}
+                      </div>
+
+                      {/* COLONNE D'ACTIONS SUR MOBILE (OVERLAY À DROITE) */}
+                      <div className="md:hidden absolute right-2.5 bottom-24 z-30 flex flex-col items-center gap-3.5 pointer-events-auto">
+                        {/* Avatar */}
+                        <div className="relative mb-1">
+                          <div className="w-10 h-10 rounded-full border-2 border-white bg-neutral-800 flex items-center justify-center text-xs font-bold shadow-md">
+                            {camp.authorName.charAt(0)}
+                          </div>
+                          <button
+                            onClick={() => handleToggleFollow(camp.handle)}
+                            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#FE2C55] text-white text-[10px] flex items-center justify-center font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Like */}
+                        <button
+                          onClick={() => handleLike(camp.uniqueKey || camp.id)}
+                          className="flex flex-col items-center gap-0.5"
+                        >
+                          <div
+                            className={`w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-xl transition transform active:scale-125 ${
+                              camp.isLiked ? "text-[#FE2C55]" : "text-white"
+                            }`}
+                          >
+                            {camp.isLiked ? "❤️" : "🤍"}
+                          </div>
+                          <span className="text-[10px] font-bold text-white shadow-sm">
+                            {camp.likesCount >= 1000 ? `${(camp.likesCount / 1000).toFixed(1)}k` : camp.likesCount}
+                          </span>
+                        </button>
+
+                        {/* Commentaires */}
+                        <button
+                          onClick={() => {
+                            setSelectedCampaign(camp);
+                            setShowCommentsModal(true);
+                          }}
+                          className="flex flex-col items-center gap-0.5"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-white">
+                            💬
+                          </div>
+                          <span className="text-[10px] font-bold text-white shadow-sm">{camp.commentsCount}</span>
+                        </button>
+
+                        {/* Signatures citoyennes */}
+                        <button
+                          onClick={() => {
+                            setSelectedCampaign(camp);
+                            setShowSignatureModal(true);
+                          }}
+                          className="flex flex-col items-center gap-0.5"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-amber-400">
+                            ✍️
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-300 shadow-sm">
+                            {camp.signaturesCount}/100
+                          </span>
+                        </button>
+
+                        {/* Partage */}
+                        <button
+                          onClick={() => {
+                            navigator.clipboard?.writeText(window.location.href);
+                            showNotification("↗️ Lien de la cause copié !");
+                          }}
+                          className="flex flex-col items-center gap-0.5"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur border border-white/15 flex items-center justify-center text-lg text-white">
+                            ↗️
+                          </div>
+                          <span className="text-[10px] font-bold text-white shadow-sm">{camp.sharesCount}</span>
+                        </button>
+
+                        {/* Son vinyle animé */}
+                        <div className="w-9 h-9 rounded-full bg-neutral-900 border-2 border-neutral-700 flex items-center justify-center animate-spin-slow">
+                          <span className="text-xs">💿</span>
+                        </div>
+                      </div>
+
+                      {/* OVERLAY INFÉRIEUR (SUR LA VIDÉO FAÇON TIKTOK) */}
+                      <div className="relative z-20 pb-4 px-4 pr-16 md:pr-4 bg-gradient-to-t from-black via-black/80 to-transparent pt-12 space-y-2 pointer-events-auto">
+                        {/* Auteur sur mobile */}
+                        <div className="md:hidden flex items-center gap-2">
+                          <span className="font-bold text-sm text-white">@{camp.handle}</span>
+                          <span className="text-[11px] text-neutral-300">• 📍 {camp.city}</span>
+                        </div>
+
+                        {/* Description mobile */}
+                        <div className="md:hidden space-y-1">
+                          <h3 className="font-bold text-xs text-white leading-snug line-clamp-2">{camp.title}</h3>
+                          <p className="text-[11px] text-neutral-300 line-clamp-2 leading-relaxed">
+                            {camp.story} <span className="text-sky-400 font-semibold">#charityy #don</span>
+                          </p>
+                        </div>
+
+                        {/* BARRE DE PROGRESSION FINANCIÈRE */}
+                        <div className="bg-black/60 backdrop-blur-md p-2.5 rounded-xl border border-white/15 space-y-1.5 shadow-lg">
+                          <div className="flex justify-between items-baseline text-[11px]">
+                            <div>
+                              <span className="font-extrabold text-emerald-400 font-mono text-xs">
+                                {formatCurrency(camp.collectedMinor, camp.currency)}
+                              </span>
+                              <span className="text-neutral-400"> / {formatCurrency(camp.goalMinor, camp.currency)}</span>
+                            </div>
+                            <span className="font-mono font-bold text-white text-[11px]">{progressPercent}%</span>
+                          </div>
+
+                          <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* GRAND BOUTON D'ACTION SOLIDAIRE */}
+                        <div className="pt-0.5">
+                          {camp.hasLive ? (
+                            <button
+                              onClick={() => {
+                                setSelectedCampaign(camp);
+                                setShowLiveModal(true);
+                              }}
+                              className="w-full bg-[#FE2C55] hover:bg-[#e0264b] text-white font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                              REJOINDRE LE LIVE ({camp.liveViewers} spectateurs)
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedCampaign(camp);
+                                setShowDonateModal(true);
+                              }}
+                              className="w-full bg-white text-black hover:bg-neutral-200 font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+                            >
+                              <span>🤝</span> Faire un don solidaire (Moneroo)
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* COLONNE D'ACTIONS SUR ORDINATEUR (À CÔTÉ DU LECTEUR VIDÉO) */}
+                    <div className="hidden md:flex flex-col items-center gap-4 ml-4 justify-end pb-4">
+                      {/* Like */}
+                      <button
+                        onClick={() => handleLike(camp.uniqueKey || camp.id)}
+                        className="flex flex-col items-center gap-1 group"
+                      >
+                        <div
+                          className={`w-12 h-12 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xl transition transform active:scale-125 shadow-md ${
+                            camp.isLiked ? "text-[#FE2C55]" : "text-white"
+                          }`}
+                        >
+                          {camp.isLiked ? "❤️" : "🤍"}
+                        </div>
+                        <span className="text-[11px] font-bold text-neutral-300">
+                          {camp.likesCount >= 1000 ? `${(camp.likesCount / 1000).toFixed(1)}k` : camp.likesCount}
+                        </span>
+                      </button>
+
+                      {/* Commentaires */}
+                      <button
+                        onClick={() => {
+                          setSelectedCampaign(camp);
+                          setShowCommentsModal(true);
+                        }}
+                        className="flex flex-col items-center gap-1 group"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 flex items-center justify-center text-lg text-white transition shadow-md">
+                          💬
+                        </div>
+                        <span className="text-[11px] font-bold text-neutral-300">{camp.commentsCount}</span>
+                      </button>
+
+                      {/* Signatures citoyennes */}
+                      <button
+                        onClick={() => {
+                          setSelectedCampaign(camp);
+                          setShowSignatureModal(true);
+                        }}
+                        className="flex flex-col items-center gap-1 group"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 flex items-center justify-center text-lg text-amber-400 transition shadow-md">
+                          ✍️
+                        </div>
+                        <span className="text-[11px] font-bold text-amber-300">{camp.signaturesCount}/100</span>
+                      </button>
+
+                      {/* Partage */}
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(window.location.href);
+                          showNotification("↗️ Lien copié dans le presse-papiers !");
+                        }}
+                        className="flex flex-col items-center gap-1 group"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 flex items-center justify-center text-lg text-white transition shadow-md">
+                          ↗️
+                        </div>
+                        <span className="text-[11px] font-bold text-neutral-300">{camp.sharesCount}</span>
+                      </button>
+
+                      {/* Son */}
+                      <button
+                        onClick={() => setIsMuted(!isMuted)}
+                        className="w-10 h-10 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs text-neutral-300"
+                        title={isMuted ? "Activer le son" : "Couper le son"}
+                      >
+                        {isMuted ? "🔇" : "🔊"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </main>
+
+      {/* ========================================================================= */}
+      {/* 5. BARRE DE NAVIGATION INFÉRIEURE TIKTOK POUR MOBILE (< 768px)            */}
+      {/* ========================================================================= */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-black/95 backdrop-blur border-t border-neutral-850 z-50 flex items-center justify-around px-2 text-white">
+        {/* ACCUEIL */}
+        <button
+          onClick={() => {
+            setActiveTab("for_you");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className={`flex flex-col items-center justify-center gap-0.5 flex-1 ${
+            activeTab === "for_you" ? "text-white" : "text-neutral-500"
+          }`}
+        >
+          <span className="text-lg">🏠</span>
+          <span className="text-[10px] font-bold">Accueil</span>
+        </button>
+
+        {/* EXPLORER */}
+        <button
+          onClick={() => setShowExploreModal(true)}
+          className={`flex flex-col items-center justify-center gap-0.5 flex-1 ${
+            activeTab === "explore" ? "text-white" : "text-neutral-500"
+          }`}
+        >
+          <span className="text-lg">🧭</span>
+          <span className="text-[10px] font-bold">Explorer</span>
+        </button>
+
+        {/* BOUTON CENTRAL + CRÉER (STYLE ICONIQUE TIKTOK) */}
+        <button
+          onClick={() => {
+            if (!currentUser) setShowAuthModal(true);
+            else setShowCreateCampaignModal(true);
+          }}
+          className="flex items-center justify-center px-2"
+          aria-label="Créer une cagnotte"
+        >
+          <div className="tiktok-plus-btn shadow-lg">
+            <span className="text-black font-black text-lg leading-none">+</span>
+          </div>
+        </button>
+
+        {/* BOÎTE DE RÉCEPTION / MESSAGES */}
+        <button
+          onClick={() => setShowInboxModal(true)}
+          className="relative flex flex-col items-center justify-center gap-0.5 flex-1 text-neutral-500 hover:text-white"
+        >
+          <span className="text-lg">💬</span>
+          <span className="text-[10px] font-bold">Boîte de réc.</span>
+          <span className="absolute top-0 right-4 bg-[#FE2C55] text-white text-[8px] font-black px-1 rounded-full">
+            99+
+          </span>
+        </button>
+
+        {/* BOUTON PROFIL (EXACTEMENT DEMANDÉ PAR L'UTILISATEUR) */}
+        <button
+          onClick={() => {
+            if (!currentUser) setShowAuthModal(true);
+            else setShowProfileModal(true);
+          }}
+          className="flex flex-col items-center justify-center gap-0.5 flex-1 text-neutral-500 hover:text-white"
+        >
+          {currentUser ? (
+            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 to-[#FE2C55] flex items-center justify-center text-[10px] font-bold text-white border border-white/20">
+              {currentUser.displayName.charAt(0)}
+            </div>
+          ) : (
+            <span className="text-lg">👤</span>
+          )}
+          <span className="text-[10px] font-bold">Profil</span>
+        </button>
+      </nav>
+
+      {/* ========================================================================= */}
+      {/* 6. MODALES ET ÉCRANS COMPLETS                                             */}
+      {/* ========================================================================= */}
+
+      {/* MODAL 1 : ÉCRAN DE PROFIL TIKTOK COMPLET */}
+      {showProfileModal && currentUser && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 md:p-6 backdrop-blur-sm animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-md rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header Profil */}
+            <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/60">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm">{currentUser.displayName}</span>
+                {isAdmin && (
+                  <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-mono font-bold">
+                    ADMIN
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Corps du profil */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar">
+              {/* Avatar et identifiant */}
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#25F4EE] via-amber-500 to-[#FE2C55] p-1 shadow-xl">
+                  <div className="w-full h-full bg-neutral-900 rounded-full flex items-center justify-center text-2xl font-bold">
+                    {currentUser.displayName.charAt(0)}
                   </div>
                 </div>
+                <div>
+                  <h3 className="font-bold text-base flex items-center justify-center gap-1">
+                    <span>{currentUser.displayName}</span>
+                    <span className="text-sky-400 text-xs">✓</span>
+                  </h3>
+                  <div className="text-xs text-neutral-400 font-mono">@{currentUser.username}</div>
+                </div>
+              </div>
 
-                {/* GRAND BOUTON SOLIDAIRE PRINCIPAL */}
-                <div className="pt-0.5">
-                  {camp.hasLive ? (
-                    <button
-                      onClick={() => {
-                        setSelectedCampaign(camp);
-                        setShowLiveModal(true);
-                      }}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-                    >
-                      <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-                      REJOINDRE LE LIVE ({camp.liveViewers} spectateurs)
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setSelectedCampaign(camp);
-                        setShowDonateModal(true);
-                      }}
-                      className="w-full bg-white text-black hover:bg-neutral-200 font-extrabold text-xs py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-                    >
-                      <span>🤝</span> Faire un don solidaire (Moneroo)
-                    </button>
+              {/* Statistiques TikTok (Abonnements, Abonnés, J'aime, Dons) */}
+              <div className="flex justify-around text-center py-2 border-y border-neutral-800">
+                <div>
+                  <div className="font-black text-sm text-white">42</div>
+                  <div className="text-[10px] text-neutral-400">Abonnements</div>
+                </div>
+                <div className="w-px bg-neutral-800" />
+                <div>
+                  <div className="font-black text-sm text-white">1.8k</div>
+                  <div className="text-[10px] text-neutral-400">Abonnés</div>
+                </div>
+                <div className="w-px bg-neutral-800" />
+                <div>
+                  <div className="font-black text-sm text-white">24.5k</div>
+                  <div className="text-[10px] text-neutral-400">J&apos;aime</div>
+                </div>
+                <div className="w-px bg-neutral-800" />
+                <div>
+                  <div className="font-black text-sm text-emerald-400 font-mono">50k F</div>
+                  <div className="text-[10px] text-neutral-400">Solde Wallet</div>
+                </div>
+              </div>
+
+              {/* Solde Portefeuille & Recharge Mobile Money Bénin */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-950/60 to-black border border-emerald-500/30 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-emerald-300 font-bold uppercase tracking-wider text-[10px]">
+                    Portefeuille Solidaire
+                  </span>
+                  <span className="text-[10px] text-neutral-400">Crédit immédiat</span>
+                </div>
+                <div className="text-2xl font-black font-mono text-emerald-400">
+                  {formatCurrency(userWalletBalance, "XOF")}
+                </div>
+
+                {rechargeSuccess && (
+                  <div className="p-2 bg-emerald-500/20 border border-emerald-500/30 rounded text-xs text-emerald-300 font-medium">
+                    {rechargeSuccess}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <button
+                    onClick={() => handleRechargeWallet(10000, "MTN Bénin")}
+                    className="p-1.5 rounded-lg bg-black/60 border border-neutral-800 hover:border-yellow-500 text-left text-[11px]"
+                  >
+                    <div className="text-yellow-500 font-bold">MTN Bénin</div>
+                    <div className="font-mono text-neutral-300">+10 000 F</div>
+                  </button>
+                  <button
+                    onClick={() => handleRechargeWallet(25000, "Moov Bénin")}
+                    className="p-1.5 rounded-lg bg-black/60 border border-neutral-800 hover:border-blue-400 text-left text-[11px]"
+                  >
+                    <div className="text-blue-400 font-bold">Moov Bénin</div>
+                    <div className="font-mono text-neutral-300">+25 000 F</div>
+                  </button>
+                  <button
+                    onClick={() => handleRechargeWallet(50000, "Wave")}
+                    className="p-1.5 rounded-lg bg-black/60 border border-neutral-800 hover:border-sky-400 text-left text-[11px]"
+                  >
+                    <div className="text-sky-400 font-bold">Wave</div>
+                    <div className="font-mono text-neutral-300">+50 000 F</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bouton d'action Admin si habilité */}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    setShowAdminModal(true);
+                  }}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 shadow"
+                >
+                  <span>👑</span> Ouvrir la Console Super-Admin (Double Approbation)
+                </button>
+              )}
+
+              {/* Onglets internes du profil */}
+              <div className="border-t border-neutral-800 pt-3">
+                <div className="flex border-b border-neutral-800 text-xs font-bold text-neutral-400">
+                  <button
+                    onClick={() => setProfileTab("campaigns")}
+                    className={`flex-1 pb-2 transition ${profileTab === "campaigns" ? "text-white border-b-2 border-white" : ""}`}
+                  >
+                    Mes Cagnottes
+                  </button>
+                  <button
+                    onClick={() => setProfileTab("donations")}
+                    className={`flex-1 pb-2 transition ${profileTab === "donations" ? "text-white border-b-2 border-white" : ""}`}
+                  >
+                    Mes Dons
+                  </button>
+                  <button
+                    onClick={() => setProfileTab("likes")}
+                    className={`flex-1 pb-2 transition ${profileTab === "likes" ? "text-white border-b-2 border-white" : ""}`}
+                  >
+                    Aimées
+                  </button>
+                  <button
+                    onClick={() => setProfileTab("kyc")}
+                    className={`flex-1 pb-2 transition ${profileTab === "kyc" ? "text-white border-b-2 border-white" : ""}`}
+                  >
+                    Pièces KYC
+                  </button>
+                </div>
+
+                <div className="pt-3 text-xs text-neutral-400">
+                  {profileTab === "campaigns" && (
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-xl bg-black/40 border border-neutral-800">
+                        <div className="font-bold text-white">Forage solaire pour 3 200 écoliers à Zè</div>
+                        <div className="text-[11px] text-emerald-400 font-mono">5 620 000 / 7 500 000 XOF (75%)</div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowProfileModal(false);
+                          setShowCreateCampaignModal(true);
+                        }}
+                        className="w-full py-2 rounded-xl border border-dashed border-neutral-700 hover:border-white text-white font-bold text-xs"
+                      >
+                        + Lancer une nouvelle cagnotte
+                      </button>
+                    </div>
+                  )}
+
+                  {profileTab === "donations" && (
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-neutral-800 flex justify-between items-center">
+                        <div>
+                          <div className="font-bold text-white">Chirurgie Aminata (CHU)</div>
+                          <div className="text-[10px] text-neutral-500">Reçu fiscal #REC-2026-9482</div>
+                        </div>
+                        <span className="font-bold font-mono text-emerald-400">-10 000 FCFA</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {profileTab === "likes" && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 rounded bg-black/50 border border-neutral-800 text-[11px] text-white">
+                        ❤️ Chirurgie Pédiatrique CHU
+                      </div>
+                      <div className="p-2 rounded bg-black/50 border border-neutral-800 text-[11px] text-white">
+                        ❤️ Forage solaire Zè Bénin
+                      </div>
+                    </div>
+                  )}
+
+                  {profileTab === "kyc" && (
+                    <div className="p-3 bg-black/40 rounded-xl border border-neutral-800 space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white font-semibold">Identité Bénin (CIP / CNI)</span>
+                        <span className="text-emerald-400 font-bold text-[10px]">✓ VALIDÉ</span>
+                      </div>
+                      <p className="text-[11px] text-neutral-400">
+                        Vos pièces sont vérifiées et archivées de façon chiffrée selon les normes bancaires.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
-            </section>
-          );
-        })}
-      </div>
 
-      {/* MODAL 1 : CONNEXION SÉCURISÉE (AUCUNE DONNÉE DE TEST VISIBLE) */}
+              {/* Bouton de déconnexion */}
+              <button
+                onClick={handleLogout}
+                className="w-full py-2.5 rounded-xl border border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white text-xs font-bold"
+              >
+                Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2 : MESSAGES & BOÎTE DE RÉCEPTION TIKTOK */}
+      {showInboxModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 md:p-6 backdrop-blur-sm animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-md rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/60">
+              <div>
+                <h3 className="font-bold text-sm">Boîte de réception & Activité</h3>
+                <span className="text-[10px] text-neutral-400">Notifications solidaires en temps réel</span>
+              </div>
+              <button
+                onClick={() => setShowInboxModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 text-xs no-scrollbar">
+              <div className="p-3 bg-black/40 border border-neutral-800 rounded-xl flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0">
+                  💰
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-white">Reçu de don validé</div>
+                  <p className="text-neutral-400 text-[11px]">
+                    Votre don de 10 000 FCFA a bien été reçu et affecté à l&apos;Urgence Pédiatrique Aminata.
+                  </p>
+                  <span className="text-[10px] text-neutral-500 block pt-1">Il y a 10 minutes</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-black/40 border border-neutral-800 rounded-xl flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#FE2C55]/20 text-[#FE2C55] flex items-center justify-center font-bold shrink-0">
+                  🔴
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-white">Dr. Mamadou Diallo est en DIRECT</div>
+                  <p className="text-neutral-400 text-[11px]">
+                    Rejoignez le live chirurgical et suivez l&apos;évolution des opérations en direct.
+                  </p>
+                  <span className="text-[10px] text-neutral-500 block pt-1">Il y a 25 minutes</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-black/40 border border-neutral-800 rounded-xl flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold shrink-0">
+                  ✍️
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-white">Signature citoyenne certifiée</div>
+                  <p className="text-neutral-400 text-[11px]">
+                    Votre signature anti-fraude pour le forage de Zè a été validée par le nœud de vérification.
+                  </p>
+                  <span className="text-[10px] text-neutral-500 block pt-1">Il y a 1 heure</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3 : EXPLORER & RECHERCHE */}
+      {showExploreModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 md:p-6 backdrop-blur-sm animate-fade-in">
+          <div className="bg-neutral-900 text-white w-full max-w-md rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-black/60">
+              <h3 className="font-bold text-sm">Explorer les causes solidaires</h3>
+              <button
+                onClick={() => setShowExploreModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4 text-xs overflow-y-auto no-scrollbar">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher par titre, ville, hôpital..."
+                className="w-full bg-black border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white"
+              />
+
+              <div className="space-y-2">
+                <label className="text-neutral-400 font-semibold text-[11px] block">Catégories d&apos;impact :</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "🚨 Urgence Médicale", key: "chirurgie" },
+                    { label: "💧 Eau & Climat", key: "eau" },
+                    { label: "📚 Éducation", key: "classe" },
+                    { label: "👶 Maternité", key: "couveuse" },
+                    { label: "🚨 Urgence Sinistrés", key: "inondations" },
+                  ].map((cat) => (
+                    <button
+                      key={cat.key}
+                      onClick={() => {
+                        setSearchQuery(cat.key);
+                        setShowExploreModal(false);
+                      }}
+                      className="p-2 rounded-lg bg-black/60 border border-neutral-800 hover:border-[#FE2C55] text-left text-xs font-medium text-white transition"
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-neutral-400 font-semibold text-[11px] block">Par Pays & Localisation :</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {["Bénin", "Cotonou", "Abidjan", "Dakar", "Lomé", "Douala"].map((city) => (
+                    <button
+                      key={city}
+                      onClick={() => {
+                        setSearchQuery(city);
+                        setShowExploreModal(false);
+                      }}
+                      className="px-3 py-1 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white text-[11px]"
+                    >
+                      📍 {city}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4 : CONNEXION SÉCURISÉE (AUCUNE DONNÉE DE TEST VISIBLE) */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-6 space-y-4 border border-neutral-800 shadow-2xl">
             <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>
-                <h3 className="font-bold text-sm">Connexion à votre espace</h3>
-                <span className="text-[10px] text-neutral-400">Accédez à votre compte en toute sécurité</span>
+                <h3 className="font-bold text-sm">Connexion à votre compte</h3>
+                <span className="text-[10px] text-neutral-400">Accédez à votre espace en toute sécurité</span>
               </div>
-              <button onClick={() => setShowAuthModal(false)} className="text-neutral-400 hover:text-white text-sm">
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center text-sm"
+              >
                 ✕
               </button>
             </div>
@@ -831,7 +1732,7 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full bg-white text-black py-2.5 rounded-lg font-bold text-xs hover:bg-neutral-200 transition disabled:opacity-50"
+                className="w-full bg-[#FE2C55] hover:bg-[#e0264b] text-white py-2.5 rounded-lg font-bold text-xs transition disabled:opacity-50 shadow-md"
               >
                 {authLoading ? "Connexion..." : "Se connecter"}
               </button>
@@ -850,7 +1751,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 2 : COMMENTAIRES EN BOTTOM SHEET TIKTOK */}
+      {/* MODAL 5 : COMMENTAIRES EN BOTTOM SHEET TIKTOK */}
       {showCommentsModal && (
         <div className="fixed inset-0 z-50 bg-black/75 flex items-end justify-center">
           <div className="bg-neutral-900 text-white w-full max-w-md rounded-t-2xl p-4 space-y-3 border-t border-neutral-800 max-h-[70vh] flex flex-col shadow-2xl animate-slide-up">
@@ -886,7 +1787,7 @@ export default function HomePage() {
                 placeholder="Ajouter un commentaire solidaire..."
                 className="flex-1 bg-black/60 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
               />
-              <button type="submit" className="bg-white text-black font-bold text-xs px-4 py-2 rounded-xl">
+              <button type="submit" className="bg-[#FE2C55] text-white font-bold text-xs px-4 py-2 rounded-xl">
                 Publier
               </button>
             </form>
@@ -894,7 +1795,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 3 : TUNNEL DE DON MONEROO & SPLIT TRANSPARENT */}
+      {/* MODAL 6 : TUNNEL DE DON MONEROO & SPLIT TRANSPARENT */}
       {showDonateModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-neutral-900 text-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl">
@@ -961,7 +1862,7 @@ export default function HomePage() {
                           : "border-neutral-800 text-neutral-400"
                       }`}
                     >
-                      📱 Mobile Money (Wave, MTN, Orange, Moov)
+                      📱 Mobile Money (Wave, MTN, Moov)
                     </button>
                     <button
                       onClick={() => setSelectedMethod("card")}
@@ -1005,7 +1906,7 @@ export default function HomePage() {
 
                 <button
                   onClick={() => setDonationSuccess(true)}
-                  className="w-full bg-white text-black py-3 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
+                  className="w-full bg-[#FE2C55] hover:bg-[#e0264b] text-white py-3 rounded-xl font-bold text-xs transition shadow"
                 >
                   Confirmer le don de {formatCurrency(BigInt(donationAmount), "XOF")}
                 </button>
@@ -1015,7 +1916,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 4 : SIGNATURES CITOYENNES */}
+      {/* MODAL 7 : SIGNATURES CITOYENNES ANTI-FRAUDE */}
       {showSignatureModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl">
@@ -1048,7 +1949,7 @@ export default function HomePage() {
 
               <button
                 onClick={handleSignCampaign}
-                className="w-full bg-white text-black py-2.5 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
+                className="w-full bg-[#FE2C55] hover:bg-[#e0264b] text-white py-2.5 rounded-xl font-bold text-xs transition shadow"
               >
                 Valider ma signature
               </button>
@@ -1057,13 +1958,13 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 5 : DIRECT SOLIDAIRE (AGORA RTC & CADEAUX) */}
+      {/* MODAL 8 : DIRECT SOLIDAIRE (AGORA RTC & CADEAUX) */}
       {showLiveModal && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col max-w-md mx-auto w-full text-white">
           <div className="p-3 border-b border-white/10 flex justify-between items-center bg-black/80">
             <div>
-              <span className="text-xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              <span className="text-xs font-bold text-[#FE2C55] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#FE2C55] animate-ping" />
                 EN DIRECT SOLIDAIRE
               </span>
               <span className="text-xs text-neutral-300">
@@ -1106,7 +2007,9 @@ export default function HomePage() {
 
           <div className="p-3 bg-neutral-900 space-y-2">
             <div className="flex items-center justify-between text-xs text-neutral-400">
-              <span>Solde wallet : <strong className="text-white font-mono">{formatCurrency(userWalletBalance, "XOF")}</strong></span>
+              <span>
+                Solde wallet : <strong className="text-white font-mono">{formatCurrency(userWalletBalance, "XOF")}</strong>
+              </span>
               <span className="text-[10px] text-neutral-400">Cadeaux = Débit ledger immédiat</span>
             </div>
 
@@ -1131,7 +2034,10 @@ export default function HomePage() {
                 placeholder="Écrire un message en direct..."
                 className="flex-1 bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
               />
-              <button type="submit" className="bg-white text-black text-xs font-bold px-4 rounded-xl hover:bg-neutral-200">
+              <button
+                type="submit"
+                className="bg-[#FE2C55] text-white text-xs font-bold px-4 rounded-xl hover:bg-[#e0264b]"
+              >
                 Envoyer
               </button>
             </form>
@@ -1139,94 +2045,13 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL 6 : ESPACE CITOYEN & WALLET (POUR UTILISATEUR CONNECTÉ) */}
-      {showUserSpaceModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
-              <div>
-                <h3 className="font-bold text-sm">Mon Espace Citoyen</h3>
-                <span className="text-[10px] text-neutral-400 block">{currentUser?.displayName}</span>
-              </div>
-              <button onClick={() => setShowUserSpaceModal(false)} className="text-neutral-400 text-sm">
-                ✕
-              </button>
-            </div>
-
-            {/* Solde Wallet */}
-            <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-900/60 to-black border border-emerald-500/30 space-y-2">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-300 block">
-                Solde de mon Portefeuille Solidaire
-              </span>
-              <div className="text-2xl font-black font-mono text-emerald-400">
-                {formatCurrency(userWalletBalance, "XOF")}
-              </div>
-            </div>
-
-            {rechargeSuccess && (
-              <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-xs text-emerald-300 font-medium">
-                {rechargeSuccess}
-              </div>
-            )}
-
-            {/* Recharges rapides */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-neutral-300 block">
-                Recharger mon portefeuille (Mobile Money Bénin) :
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => handleRechargeWallet(10000, "MTN Bénin")}
-                  className="p-2 border border-neutral-800 rounded-lg bg-black text-xs font-semibold hover:border-emerald-500 transition text-left"
-                >
-                  <div className="text-yellow-500 font-bold">MTN Bénin</div>
-                  <div className="text-[11px] font-mono">+10 000 F</div>
-                </button>
-                <button
-                  onClick={() => handleRechargeWallet(25000, "Moov Bénin")}
-                  className="p-2 border border-neutral-800 rounded-lg bg-black text-xs font-semibold hover:border-emerald-500 transition text-left"
-                >
-                  <div className="text-blue-400 font-bold">Moov Bénin</div>
-                  <div className="text-[11px] font-mono">+25 000 F</div>
-                </button>
-                <button
-                  onClick={() => handleRechargeWallet(50000, "Wave")}
-                  className="p-2 border border-neutral-800 rounded-lg bg-black text-xs font-semibold hover:border-emerald-500 transition text-left"
-                >
-                  <div className="text-sky-400 font-bold">Wave</div>
-                  <div className="text-[11px] font-mono">+50 000 F</div>
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-neutral-800 space-y-2">
-              <button
-                onClick={() => {
-                  setShowUserSpaceModal(false);
-                  setShowCreateCampaignModal(true);
-                }}
-                className="w-full bg-white text-black py-2.5 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
-              >
-                ➕ Lancer une nouvelle cagnotte solidaire
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-full border border-neutral-800 py-2 rounded-xl text-neutral-400 hover:text-white text-xs"
-              >
-                Se déconnecter
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 7 : CRÉATION DE CAGNOTTE CITOYENNE */}
+      {/* MODAL 9 : IMPORTER / CRÉER UNE CAGNOTTE (TIKTOK STUDIO) */}
       {showCreateCampaignModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>
-                <h3 className="font-bold text-sm">Lancer une cagnotte solidaire</h3>
+                <h3 className="font-bold text-sm">Téléverser une vidéo solidaire</h3>
                 <span className="text-[10px] text-neutral-400">Diffusion instantanée dans le fil TikTok</span>
               </div>
               <button onClick={() => setShowCreateCampaignModal(false)} className="text-neutral-400 text-sm">
@@ -1235,6 +2060,13 @@ export default function HomePage() {
             </div>
 
             <form onSubmit={handleCreateCampaignSubmit} className="space-y-3 text-xs">
+              {/* Zone Drag & Drop Vidéo TikTok */}
+              <div className="border-2 border-dashed border-neutral-700 hover:border-[#FE2C55] rounded-xl p-4 text-center cursor-pointer transition bg-black/40">
+                <span className="text-2xl block mb-1">📹</span>
+                <span className="text-xs font-bold block text-white">Sélectionner une vidéo à téléverser</span>
+                <span className="text-[10px] text-neutral-400 block pt-0.5">MP4 ou WebM • 720p minimum</span>
+              </div>
+
               <div>
                 <label className="font-semibold block text-neutral-300 mb-1">Titre de votre cause :</label>
                 <input
@@ -1300,18 +2132,18 @@ export default function HomePage() {
 
               <button
                 type="submit"
-                className="w-full bg-white text-black py-3 rounded-xl font-bold text-xs hover:bg-neutral-200 transition shadow"
+                className="w-full bg-[#FE2C55] hover:bg-[#e0264b] text-white py-3 rounded-xl font-bold text-xs transition shadow"
               >
-                Publier la vidéo dans le fil
+                Publier la vidéo solidaire
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 8 : CONSOLE D'ADMINISTRATION GÉNÉRALE (POUR ADMIN) */}
+      {/* MODAL 10 : CONSOLE D'ADMINISTRATION GÉNÉRALE (POUR ADMIN) */}
       {showAdminModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
           <div className="bg-neutral-900 text-white w-full max-w-sm rounded-2xl p-5 space-y-4 border border-neutral-800 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
               <div>

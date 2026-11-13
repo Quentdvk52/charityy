@@ -50,3 +50,50 @@ button, a, input, select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Effet 3D TikTok pour le bouton central Créer */
+.tiktok-plus-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 28px;
+  border-radius: 8px;
+  background-color: white;
+  transition: transform 0.15s ease;
+}
+
+.tiktok-plus-btn::before,
+.tiktok-plus-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  border-radius: 8px;
+  z-index: -1;
+}
+
+.tiktok-plus-btn::before {
+  left: -4px;
+  background-color: #25F4EE; /* Cyan TikTok */
+}
+
+.tiktok-plus-btn::after {
+  right: -4px;
+  background-color: #FE2C55; /* Rouge/Rose TikTok */
+}
