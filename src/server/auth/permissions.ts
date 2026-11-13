@@ -22,6 +22,7 @@ export type Permission =
   | "payout:request"
   | "payout:review"
   | "payout:second_approve"
+  | "payout:approve"
   | "finance:reconcile"
   | "finance:refund"
   // Support & Administration
@@ -94,6 +95,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "campaign:freeze",
     "payout:review",
     "payout:second_approve",
+    "payout:approve",
     "finance:reconcile",
     "finance:refund",
     "admin:view_dashboard",
@@ -117,6 +119,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "kyc:review",
     "resource_person:verify",
     "payout:review",
+    "payout:second_approve",
+    "payout:approve",
     "finance:reconcile",
     "finance:refund",
     "support:view_tickets",
@@ -139,6 +143,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "resource_person:verify",
     "payout:review",
     "payout:second_approve",
+    "payout:approve",
     "finance:reconcile",
     "finance:refund",
     "support:view_tickets",
@@ -153,10 +158,15 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 /**
  * Vérifie si une liste de rôles utilisateur accorde une permission donnée.
  */
-export function hasPermission(roles: UserRole[], permission: Permission): boolean {
-  if (!roles || roles.length === 0) return false;
+export function hasPermission(
+  roles: UserRole[] | UserRole,
+  permission: Permission
+): boolean {
+  if (!roles) return false;
+  const roleList = Array.isArray(roles) ? roles : [roles];
+  if (roleList.length === 0) return false;
 
-  return roles.some((role) => {
+  return roleList.some((role) => {
     const permissions = ROLE_PERMISSIONS[role] || [];
     return permissions.includes(permission);
   });
@@ -165,7 +175,10 @@ export function hasPermission(roles: UserRole[], permission: Permission): boolea
 /**
  * Exige une permission spécifique, lève une exception en cas de refus.
  */
-export function assertPermission(roles: UserRole[], permission: Permission): void {
+export function assertPermission(
+  roles: UserRole[] | UserRole,
+  permission: Permission
+): void {
   if (!hasPermission(roles, permission)) {
     throw new Error(`Accès refusé : la permission ${permission} est requise`);
   }

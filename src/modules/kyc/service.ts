@@ -87,9 +87,7 @@ export function getSecureKycDocumentUrl(params: {
   const { reviewerId, reviewerRoles, submissionId, documentKey, clientIp } = params;
 
   // Contrôle RBAC strict
-  const canView = reviewerRoles.some((role) =>
-    hasPermission(role as any, "kyc:view_sensitive")
-  );
+  const canView = hasPermission(reviewerRoles as any, "kyc:view_sensitive");
 
   if (!canView) {
     logAudit({
@@ -150,9 +148,7 @@ export function reviewKycSubmission(params: {
 }): { success: boolean; submission?: KycRecord; error?: string } {
   const { reviewerId, reviewerRoles, submissionId, approved, rejectionNote, clientIp } = params;
 
-  const canReview = reviewerRoles.some((role) =>
-    hasPermission(role as any, "kyc:review")
-  );
+  const canReview = hasPermission(reviewerRoles as any, "kyc:review");
 
   if (!canReview) {
     return { success: false, error: "Action non autorisée pour vos rôles." };

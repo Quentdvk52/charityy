@@ -33,9 +33,7 @@ export async function POST(request: Request) {
     }
 
     // Contrôle d'habilitation RBAC pour approuver un retrait
-    const canApprove = approver.roles.some((r) =>
-      hasPermission(r as any, "payout:approve")
-    );
+    const canApprove = hasPermission(approver.roles as any, "payout:approve");
 
     if (!canApprove) {
       return NextResponse.json({ error: "Accès refusé : rôle FINANCE ou ADMIN requis." }, { status: 403 });
