@@ -61,9 +61,26 @@ function initDefaultUsers() {
       updatedAt: new Date(),
     };
 
+    const donorUser: StoredUser = {
+      id: "usr_donateur",
+      username: "donateur",
+      displayName: "Awa Traoré (Citoyenne Donatrice)",
+      email: "donateur@charityy.org",
+      phone: "+2250102030499",
+      roles: ["USER"],
+      kycStatus: "APPROVED",
+      countryCode: "CI",
+      city: "Abidjan",
+      locale: "fr",
+      passwordHash: hashPassword("Donateur2026!"),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
     memoryUsers.set(adminUser.id, adminUser);
     memoryUsers.set(verifierUser.id, verifierUser);
     memoryUsers.set(creatorUser.id, creatorUser);
+    memoryUsers.set(donorUser.id, donorUser);
   }
 }
 
