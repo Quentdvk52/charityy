@@ -11,3 +11,5 @@ node_modules
 ~*
 *.tmp
 coverage
+variables.md
+variables*.md
